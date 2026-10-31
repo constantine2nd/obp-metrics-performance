@@ -1,0 +1,64 @@
+Building obp_loadtest_base: 5000000 metric + 15000000 metricarchive rows (needs ~11 GB, 43 GB free)
+Copied tables from obp_mapped
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:46:57 metric: 500000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:46:59 metric: 1000000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:01 metric: 1500000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:03 metric: 2000000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:06 metric: 2500000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:08 metric: 3000000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:10 metric: 3500000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:11 metric: 4000000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:13 metric: 4500000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:67: NOTICE:  08:47:15 metric: 5000000 / 5000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:17 metricarchive: 500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:19 metricarchive: 1000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:22 metricarchive: 1500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:25 metricarchive: 2000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:28 metricarchive: 2500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:31 metricarchive: 3000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:34 metricarchive: 3500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:37 metricarchive: 4000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:41 metricarchive: 4500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:44 metricarchive: 5000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:47 metricarchive: 5500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:51 metricarchive: 6000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:55 metricarchive: 6500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:47:58 metricarchive: 7000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:01 metricarchive: 7500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:04 metricarchive: 8000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:08 metricarchive: 8500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:11 metricarchive: 9000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:14 metricarchive: 9500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:17 metricarchive: 10000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:20 metricarchive: 10500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:23 metricarchive: 11000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:26 metricarchive: 11500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:30 metricarchive: 12000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:33 metricarchive: 12500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:36 metricarchive: 13000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:39 metricarchive: 13500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:42 metricarchive: 14000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:45 metricarchive: 14500000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:96: NOTICE:  08:48:48 metricarchive: 15000000 / 15000000 rows
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:48:54 index idx_metricarchive_consent_reference_id
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:48:56 index idx_metric_consent_reference_id
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:01 index metricarchive_appname
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:04 index metricarchive_consent_reference_id
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:09 index metricarchive_consumerid
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:13 index metricarchive_date_c
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:19 index metricarchive_developeremail
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:39 index metricarchive_url
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:44 index metricarchive_userid
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:48 index metricarchive_username
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:50 index metric_consent_reference_id
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:51 index metric_consumerid
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:52 index metric_date_c
+psql:~/obp-metrics-performance/loadtest/generate.sql:106: NOTICE:  08:49:54 index metric_userid_idx
+vacuum + analyze ...
+     table     |    rows    |  data   | indexes 
+---------------+------------+---------+---------
+ metric        | 5,042,488  | 1014 MB | 349 MB
+ metricarchive | 15,141,706 | 3617 MB | 1463 MB
+(2 rows)
+
+Done: obp_loadtest_base is 7 GB, 36 GB free. Next: ./run.sh baseline

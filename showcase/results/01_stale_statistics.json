@@ -1,0 +1,80 @@
+{
+ "file": "01_stale_statistics.sql",
+ "title": "Estimated vs actual rows: stale statistics",
+ "category": "Execution plans",
+ "claim": [
+  "If the database thinks it is processing 100 rows but actually processes 100,000, its optimization decisions",
+  "will be terrible. Large discrepancies often point to outdated statistics."
+ ],
+ "verdict": [
+  "Confirmed, dramatically. With statistics from before the new consumer's 1M rows, the planner estimated a few",
+  "hundred rows, fetched all 1,000,000 through the consumer index and sorted them ({t:stale}). After ANALYZE (0.2",
+  "s) it expects 1M rows, walks the date index backwards and stops after 20 ({t:fresh}): {x:stale/fresh} faster.",
+  "Autovacuum re-analyzes only after about 10% of a table changes, so bulk loads and new tenants can outrun it: run",
+  "ANALYZE after big loads."
+ ],
+ "compare": [
+  "stale",
+  "fresh"
+ ],
+ "sections": [
+  {
+   "kind": "setup",
+   "label": "setup",
+   "ms": 8094.275146002474,
+   "sql": "SET maintenance_work_mem = '1GB';\nDROP TABLE IF EXISTS sc_stale;\n-- Half of metric, with autovacuum (and so auto-ANALYZE) switched off for this table.\nCREATE TABLE sc_stale WITH (autovacuum_enabled = false) AS SELECT * FROM metric WHERE id % 2 = 0;\nCREATE INDEX sc_stale_consumer ON sc_stale (consumerid);\nCREATE INDEX sc_stale_date ON sc_stale (date_c);\nANALYZE sc_stale;\n-- After the last ANALYZE a new consumer (a bot, a partner's load test) makes 1M calls.\nINSERT INTO sc_stale (url, duration, date_c, consumerid, correlationid, httpcode, verb)\nSELECT '/obp/v5.1.0/banks', 20, localtimestamp - g * interval '1 second', 'new-bot', gen_random_uuid()::text, 200, 'GET'\n  FROM generate_series(1, 1000000) g;"
+  },
+  {
+   "ms": 247.211,
+   "planning_ms": 0.261,
+   "hit": 7599,
+   "read": 9584,
+   "io_ms": 20.567,
+   "rows": 20,
+   "width": 52,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Limit \u2192 Sort \u2192 Index Scan (sc_stale_consumer)",
+   "plan_text": "Limit | rows=20 (est 20) loops=1 time=247.194 ms | buffers hit=7599 read=9584\n  -> Sort | rows=20 (est 290) loops=1 time=247.191 ms | sort=top-N heapsort 26kB Memory | buffers hit=7599 read=9584\n    -> Index Scan (sc_stale_consumer) | cond ((consumerid)::text = 'new-bot'::text) | rows=1000000 (est 290) loops=1 time=157.168 ms | buffers hit=7596 read=9584",
+   "label": "stale",
+   "desc": "latest 20 calls of the new consumer, statistics from before its 1M rows",
+   "mode": "explain",
+   "first_ms": 264.924,
+   "median_ms": 247.211,
+   "runs": 5,
+   "sql": "SELECT id, date_c, url, httpcode FROM sc_stale WHERE consumerid = 'new-bot' ORDER BY date_c DESC LIMIT 20;",
+   "first_read": 4905,
+   "first_hit": 12278,
+   "kind": "case"
+  },
+  {
+   "kind": "step",
+   "label": "ANALYZE",
+   "ms": 216.9237449998036,
+   "sql": "ANALYZE sc_stale;"
+  },
+  {
+   "ms": 0.026,
+   "planning_ms": 0.269,
+   "hit": 5,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 20,
+   "width": 48,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Limit \u2192 Index Scan Backward (sc_stale_date)",
+   "plan_text": "Limit | rows=20 (est 20) loops=1 time=0.013 ms | buffers hit=5 read=0\n  -> Index Scan Backward (sc_stale_date) | filter ((consumerid)::text = 'new-bot'::text) | rows=20 (est 977752) loops=1 time=0.012 ms | buffers hit=5 read=0",
+   "label": "fresh",
+   "desc": "same query after ANALYZE",
+   "mode": "explain",
+   "first_ms": 0.058,
+   "median_ms": 0.042,
+   "runs": 5,
+   "sql": "SELECT id, date_c, url, httpcode FROM sc_stale WHERE consumerid = 'new-bot' ORDER BY date_c DESC LIMIT 20;",
+   "first_read": 5,
+   "first_hit": 0,
+   "kind": "case"
+  }
+ ]
+}

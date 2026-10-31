@@ -1,0 +1,99 @@
+pgbench (14.24 (Ubuntu 14.24-0ubuntu0.22.04.1))
+transaction type: multiple scripts
+scaling factor: 1
+query mode: prepared
+number of clients: 4
+number of threads: 4
+duration: 300 s
+number of transactions actually processed: 107505
+latency average = 11.162 ms
+latency stddev = 32.424 ms
+initial connection time = 2.596 ms
+tps = 358.259288 (without initial connection time)
+SQL script 1: ~/obp-metrics-performance/loadtest/workloads/w_insert.sql
+ - weight: 70 (targets 70.0% of total)
+ - 75036 transactions (69.8% of total, tps = 250.056685)
+ - latency average = 1.696 ms
+ - latency stddev = 2.146 ms
+ - statement latencies in milliseconds:
+         0.001  \set k random(1, :n_tpl_metric)
+         1.693  INSERT INTO metric (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail,
+SQL script 2: ~/obp-metrics-performance/loadtest/workloads/r_list.sql
+ - weight: 12 (targets 12.0% of total)
+ - 13003 transactions (12.1% of total, tps = 43.332361)
+ - latency average = 17.210 ms
+ - latency stddev = 27.744 ms
+ - statement latencies in milliseconds:
+         0.002  \set f random(1, 3)
+         0.002  \set days random_exponential(1, 30, 2.0)
+         0.001  \set off 50 * random(0, 4)
+         0.001  \if :f = 1
+         0.001  \set c random(1, :n_consumer)
+         0.071  SELECT val AS v FROM lt_values WHERE kind = 'consumer' AND k = :c 
+         7.213  SELECT * FROM metric
+         0.001  \elif :f = 2
+         0.001  \set c random(1, :n_function)
+         0.077  SELECT val AS v FROM lt_values WHERE kind = 'function' AND k = :c 
+        43.003  SELECT * FROM metric
+         0.001  \else
+         0.994  SELECT * FROM metric
+         0.000  \endif
+SQL script 3: ~/obp-metrics-performance/loadtest/workloads/r_aggregate.sql
+ - weight: 4 (targets 4.0% of total)
+ - 4305 transactions (4.0% of total, tps = 14.346367)
+ - latency average = 34.421 ms
+ - latency stddev = 24.201 ms
+ - statement latencies in milliseconds:
+         0.003  \set days random_exponential(1, 30, 2.0)
+         0.001  \set f random(1, 2)
+         0.001  \if :f = 1
+        48.334  SELECT count(*), avg(duration), min(duration), max(duration)
+         0.001  \else
+         0.002  \set c random(1, :n_consumer)
+         0.073  SELECT val AS v FROM lt_values WHERE kind = 'consumer' AND k = :c 
+        20.253  SELECT count(*), avg(duration), min(duration), max(duration)
+         0.001  \endif
+SQL script 4: ~/obp-metrics-performance/loadtest/workloads/r_top_apis.sql
+ - weight: 3 (targets 3.0% of total)
+ - 3251 transactions (3.0% of total, tps = 10.833923)
+ - latency average = 90.447 ms
+ - latency stddev = 32.370 ms
+ - statement latencies in milliseconds:
+         0.003  \set days random_exponential(1, 30, 2.0)
+        90.442  SELECT implementedbypartialfunction, implementedinversion, count(*) AS calls, avg(duration) AS avg_duration
+SQL script 5: ~/obp-metrics-performance/loadtest/workloads/r_top_consumers.sql
+ - weight: 3 (targets 3.0% of total)
+ - 3307 transactions (3.1% of total, tps = 11.020543)
+ - latency average = 74.735 ms
+ - latency stddev = 27.951 ms
+ - statement latencies in milliseconds:
+         0.003  \set days random_exponential(1, 30, 2.0)
+        74.732  SELECT consumerid, appname, developeremail, count(*) AS calls
+SQL script 6: ~/obp-metrics-performance/loadtest/workloads/r_lookup.sql
+ - weight: 5 (targets 5.0% of total)
+ - 5330 transactions (5.0% of total, tps = 17.762169)
+ - latency average = 0.444 ms
+ - latency stddev = 1.354 ms
+ - statement latencies in milliseconds:
+         0.002  \set id random(1, :max_metric_id)
+         0.367  SELECT coalesce((SELECT correlationid FROM metric WHERE id >= :id ORDER BY id LIMIT 1), '-') AS corr 
+         0.074  SELECT * FROM metric WHERE correlationid = :corr;
+SQL script 7: ~/obp-metrics-performance/loadtest/workloads/r_archive_search.sql
+ - weight: 3 (targets 3.0% of total)
+ - 3234 transactions (3.0% of total, tps = 10.777271)
+ - latency average = 48.566 ms
+ - latency stddev = 118.845 ms
+ - statement latencies in milliseconds:
+         0.004  \set from_days random(:metric_days + 1, :metric_days + :archive_days)
+         0.002  \set span random_exponential(1, 30, 2.0)
+         0.001  \set to_days :from_days - :span
+         0.001  \set f random(1, 2)
+         0.001  \if :f = 1
+         0.001  \set c random(1, :n_archive_consumer)
+         0.091  SELECT val AS v FROM lt_values WHERE kind = 'archive_consumer' AND k = :c 
+        83.922  SELECT * FROM metricarchive
+         0.001  \else
+         0.002  \set c random(1, :n_archive_url)
+         0.086  SELECT val AS v FROM lt_values WHERE kind = 'archive_url' AND k = :c 
+        10.656  SELECT * FROM metricarchive
+         0.001  \endif

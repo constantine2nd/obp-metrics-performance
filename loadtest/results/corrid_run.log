@@ -1,0 +1,37 @@
+Results: ~/obp-metrics-performance/loadtest/results/corrid
+== read: cloning obp_loadtest_base -> obp_loadtest
+NOTICE:  database "obp_loadtest" does not exist, skipping
+   warmup 30s
+   read               1 clients, 300s ... tps     106.8   p50 2.32 ms   p95 34.47 ms   p99 59.25 ms
+   read               4 clients, 300s ... tps     192.9   p50 4.72 ms   p95 81.76 ms   p99 135.88 ms
+   read               8 clients, 300s ... tps     207.6   p50 7.62 ms   p95 153.05 ms   p99 279.18 ms
+   read              16 clients, 300s ... tps     219.0   p50 13.77 ms   p95 306.84 ms   p99 597.35 ms
+== write: cloning obp_loadtest_base -> obp_loadtest
+   warmup 30s
+   write              1 clients, 300s ... tps     544.1   p50 1.73 ms   p95 2.38 ms   p99 2.65 ms
+   write              4 clients, 300s ... tps    1233.1   p50 3.23 ms   p95 3.61 ms   p99 4.57 ms
+   write              8 clients, 300s ... tps    2367.9   p50 3.25 ms   p95 3.71 ms   p99 4.95 ms
+   write             16 clients, 300s ... tps    4447.8   p50 3.37 ms   p95 4.36 ms   p99 6.65 ms
+== mixed: cloning obp_loadtest_base -> obp_loadtest
+   warmup 30s
+   mixed              1 clients, 300s ... tps     239.9   p50 0.47 ms   p95 26.01 ms   p99 45.84 ms
+   mixed              4 clients, 300s ... tps     358.3   p50 1.75 ms   p95 74.94 ms   p99 125.63 ms
+   mixed              8 clients, 300s ... tps     286.7   p50 0.59 ms   p95 199.37 ms   p99 328.16 ms
+   mixed             16 clients, 300s ... tps     232.3   p50 1.17 ms   p95 513.42 ms   p99 853.92 ms
+
+scenario          clients |                 corrid       tps   p95 ms
+---------------------------------------------------------------------
+read                    1 |                            106.8    34.47
+read                    4 |                            192.9    81.76
+read                    8 |                            207.6   153.05
+read                   16 |                            219.0   306.84
+write                   1 |                            544.1     2.38
+write                   4 |                           1233.1     3.61
+write                   8 |                           2367.9     3.71
+write                  16 |                           4447.8     4.36
+mixed                   1 |                            239.9    26.01
+mixed                   4 |                            358.3    74.94
+mixed                   8 |                            286.7   199.37
+mixed                  16 |                            232.3   513.42
+
+✓/✗ = better/worse by 5% or more vs corrid

@@ -1,0 +1,15 @@
+pgbench (14.24 (Ubuntu 14.24-0ubuntu0.22.04.1))
+transaction type: ~/obp-metrics-performance/loadtest/workloads/w_insert.sql
+scaling factor: 1
+query mode: prepared
+number of clients: 1
+number of threads: 1
+duration: 300 s
+number of transactions actually processed: 163233
+latency average = 1.836 ms
+latency stddev = 0.401 ms
+initial connection time = 1.508 ms
+tps = 544.111086 (without initial connection time)
+statement latencies in milliseconds:
+         0.001  \set k random(1, :n_tpl_metric)
+         1.835  INSERT INTO metric (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail,

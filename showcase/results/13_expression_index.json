@@ -1,0 +1,77 @@
+{
+ "file": "13_expression_index.sql",
+ "title": "Expression index",
+ "category": "Indexing",
+ "claim": [
+  "Index the result of a function so queries filtering on that expression can use an index."
+ ],
+ "verdict": [
+  "Confirmed. split_part(url, '/', 3) = 'v4.0.0' scanned all 5M rows ({t:function_no_index}); with a 33 MB",
+  "expression index it took {t:expression_index} ({x:function_no_index/expression_index}). Run ANALYZE after",
+  "creating it so the planner gets statistics for the expression."
+ ],
+ "compare": [
+  "function_no_index",
+  "expression_index"
+ ],
+ "sections": [
+  {
+   "ms": 483.314,
+   "planning_ms": 0.385,
+   "hit": 384,
+   "read": 127597,
+   "io_ms": 240.123,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Parallel Seq Scan (metric)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=465.788 ms | buffers hit=384 read=127597\n  -> Gather | rows=3 (est 2) loops=1 time=465.741 ms | workers=2 | buffers hit=384 read=127597\n    -> Aggregate | rows=1 (est 1) loops=3 time=436.877 ms | buffers hit=384 read=127597\n      -> Parallel Seq Scan (metric) | filter (split_part((url)::text, '/'::text, 3) = 'v4.0.0'::text) | rows=1135 (est 10482) loops=3 time=436.304 ms | removed by filter=1676371 | buffers hit=384 read=127597",
+   "label": "function_no_index",
+   "desc": "calls to a rare API version, split_part(url, '/', 3) = 'v4.0.0'",
+   "mode": "explain",
+   "first_ms": 303.75,
+   "median_ms": 366.174,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM metric WHERE split_part(url, '/', 3) = 'v4.0.0';",
+   "first_read": 127981,
+   "first_hit": 0,
+   "kind": "case"
+  },
+  {
+   "kind": "step",
+   "label": "expression index + ANALYZE (expression indexes get their own statistics)",
+   "ms": 2568.7583850012743,
+   "sql": "SET maintenance_work_mem = '1GB';\nCREATE INDEX sc_metric_api_version ON metric ((split_part(url, '/', 3)));\nANALYZE metric;"
+  },
+  {
+   "ms": 3.36,
+   "planning_ms": 0.394,
+   "hit": 3399,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Index Scan (sc_metric_api_version)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=3.299 ms | buffers hit=3399 read=0\n  -> Index Scan (sc_metric_api_version) | cond (split_part((url)::text, '/'::text, 3) = 'v4.0.0'::text) | rows=3404 (est 2348) loops=1 time=3.029 ms | buffers hit=3399 read=0",
+   "label": "expression_index",
+   "desc": "same query with the expression index",
+   "mode": "explain",
+   "first_ms": 11.772,
+   "median_ms": 3.509,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM metric WHERE split_part(url, '/', 3) = 'v4.0.0';",
+   "first_read": 3382,
+   "first_hit": 17,
+   "kind": "case"
+  },
+  {
+   "kind": "info",
+   "label": "Index size",
+   "sql": "SELECT pg_size_pretty(pg_relation_size('sc_metric_api_version')) AS expression_index_size;",
+   "output": "expression_index_size \n-----------------------\n 33 MB\n(1 row)"
+  }
+ ]
+}

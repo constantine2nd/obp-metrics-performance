@@ -1,0 +1,20 @@
+label: corrid   date: 2026-09-24 08:22:11   base: obp_loadtest_base (7 GB)
+scenarios: read write mixed   clients: 1 4 8 16   duration: 300s   warmup: 30s
+applied: ~/obp-metrics-performance/loadtest/tuning/02_index_correlationid.sql
+
+              name               | setting | unit 
+---------------------------------+---------+------
+ autovacuum_vacuum_cost_limit    | -1      | 
+ autovacuum_vacuum_scale_factor  | 0.2     | 
+ checkpoint_timeout              | 300     | s
+ effective_cache_size            | 524288  | 8kB
+ jit                             | on      | 
+ maintenance_work_mem            | 65536   | kB
+ max_parallel_workers_per_gather | 2       | 
+ max_wal_size                    | 1024    | MB
+ random_page_cost                | 4       | 
+ shared_buffers                  | 16384   | 8kB
+ synchronous_commit              | on      | 
+ track_io_timing                 | on      | 
+ work_mem                        | 4096    | kB
+

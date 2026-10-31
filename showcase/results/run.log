@@ -1,0 +1,133 @@
+== 00_explain_plans: Reading an execution plan
+   info    1. EXPLAIN: the plan the optimizer picked, estimates only (the query is not executed)
+   info    2. EXPLAIN (ANALYZE, BUFFERS): executed; actual rows, time per node and pages (hit = cache, read = disk/OS)
+   case    metrics_list                    0.65 ms  Limit → Index Scan Backward (metric_date_c)
+== 01_stale_statistics: Estimated vs actual rows: stale statistics
+   setup   setup                            8.09 s
+   case    stale                            247 ms  Limit → Sort → Index Scan (sc_stale_consumer)
+   step    ANALYZE                          217 ms
+   case    fresh                           0.04 ms  Limit → Index Scan Backward (sc_stale_date)
+== 02_select_star: SELECT * vs only the needed columns
+   setup   setup                            3.06 s
+   info    Row width: all columns vs the 4 needed ones (average bytes per row, 1% sample)
+   case    star_client                      145 ms
+   case    columns_client                    68 ms
+   case    star_index                        33 ms  Parallel Index Scan Backward (metric_date_c)
+   case    columns_index_only               1.5 ms  Index Only Scan Backward (sc_metric_consumer_date_incl)
+== 03_n_plus_1: N+1 queries vs one query
+   setup   setup                            2.43 s
+   case    n_plus_1                          68 ms
+   case    lateral_client                    22 ms
+   case    lateral_server                    11 ms  Nested Loop → Limit → Index Scan Backward (metric_date_c) → Index Scan Backward (sc_metric_user_date)
+== 04_function_in_where: Function wrapped around a column in WHERE
+   case    cast_date                        193 ms  Aggregate → Parallel Seq Scan (metric)
+   case    range                            2.4 ms  Aggregate → Index Scan (metric_date_c)
+   case    lower_email                      1.71 s  Aggregate → Parallel Seq Scan (metricarchive)
+   case    plain_email                      225 ms  Aggregate → Index Scan (metricarchive_developeremail)
+   step    expression index on lower(developeremail)     6.22 s
+   case    lower_email_indexed              233 ms  Aggregate → Index Scan (sc_archive_lower_email)
+== 05_or_conditions: OR across different columns vs UNION
+   case    or_count                         158 ms  Aggregate → Bitmap Heap Scan (metric) → BitmapOr → Bitmap Index Scan (metric_consumerid) → Bitmap Index Scan (metric_userid_idx)
+   case    union_count                      194 ms  Aggregate → Append → Bitmap Heap Scan (metric) → Bitmap Index Scan (metric_consumerid) → Index Scan (metric_userid_idx)
+   case    or_unindexed                     223 ms  Aggregate → Parallel Seq Scan (metric)
+   step    indexes that also cover the sort order     5.53 s
+   case    or_latest                       0.18 ms  Limit → Index Scan Backward (metric_date_c)
+   case    union_latest                    0.17 ms  Limit → Sort → Aggregate → Append → Index Scan Backward (sc_metric_consumer_date) → Index Scan Backward (sc_metric_user_date)
+   case    or_latest_rare                   1.1 ms  Limit → Sort → Bitmap Heap Scan (metric) → BitmapOr → Bitmap Index Scan (sc_metric_consumer_date) → Bitmap Index Scan (metric_userid_idx)
+   case    union_latest_rare               0.71 ms  Limit → Sort → Aggregate → Append → Index Scan (metric_consumerid) → Index Scan Backward (sc_metric_user_date)
+== 06_type_conversion: Implicit type conversion
+   info    varchar column compared with an integer: PostgreSQL refuses instead of converting silently
+   case    int_literal                     0.04 ms  Index Scan (metric_pk)
+   case    string_literal                  0.04 ms  Index Scan (metric_pk)
+   case    numeric_literal                  223 ms  Parallel Seq Scan (metric)
+   case    cast_column                      213 ms  Parallel Seq Scan (metric)
+== 07_covering_index: Covering index for a frequent query
+   case    date_index                        50 ms  Limit → Sort → Aggregate → Parallel Index Scan (metric_date_c)
+   case    insert_before                     73 ms  ModifyTable (metric) → Subquery Scan → Index Scan (lt_tpl_metric_pkey)
+   step    covering index: date_c + INCLUDE the grouped and averaged columns     2.06 s
+   case    covering                          38 ms  Limit → Sort → Aggregate → Parallel Index Only Scan (sc_metric_date_covering)
+   info    Index sizes: plain date index vs covering index
+   case    insert_after                      79 ms  ModifyTable (metric) → Subquery Scan → Index Scan (lt_tpl_metric_pkey)
+== 08_partial_index: Partial index for a filtered subset
+   setup   setup                            3.48 s
+   info    Sizes: 8% of calls are errors, 61% have no consumer id
+   case    no_index                          29 ms  Aggregate → Sort → Parallel Index Scan (metric_date_c)
+   case    full_index                        15 ms  Aggregate → Sort → Index Only Scan (sc_metric_http_date)
+   case    partial_index                    9.1 ms  Aggregate → Sort → Index Only Scan (sc_metric_errors_date)
+== 09_keyset_pagination: OFFSET vs keyset pagination
+   setup   setup                            1.28 s
+   case    offset_page_1                   0.03 ms  Limit → Index Scan (sc_metric_date_id)
+   case    offset_page_1000                 3.1 ms  Limit → Index Scan (sc_metric_date_id)
+   case    offset_page_50000                241 ms  Limit → Index Scan (sc_metric_date_id)
+   case    keyset_page_1000                0.03 ms  Limit → Index Scan (sc_metric_date_id)
+   case    keyset_page_50000               0.04 ms  Limit → Index Scan (sc_metric_date_id)
+== 10_batch_operations: Row-by-row vs batch: the archive job
+   case    row_by_row                       1.49 s
+   case    batch_client                     213 ms
+   case    batch_server                     205 ms  ModifyTable (metricarchive) → ModifyTable (metric) → Nested Loop → Aggregate → Subquery Scan → Limit → …
+   case    row_by_row_checked              15.73 s
+   step    index on metricarchive.metricid     4.67 s
+   case    row_by_row_checked_indexed       8.3 ms
+== 11_materialized_view: Materialized view for dashboard aggregations
+   setup   setup                            3.13 s
+   info    Materialized view: rows and size vs the metric table
+   case    raw_7                             18 ms  Limit → Sort → Aggregate → Parallel Index Scan (metric_date_c)
+   case    mv_7                            0.69 ms  Limit → Sort → Aggregate → Bitmap Heap Scan (sc_metric_daily) → Bitmap Index Scan (sc_metric_daily_key)
+   case    raw_365                          663 ms  Limit → Sort → Aggregate → Parallel Seq Scan (metric)
+   case    mv_365                            30 ms  Limit → Sort → Aggregate → Seq Scan (sc_metric_daily)
+   case    refresh                          2.93 s
+   case    refresh_concurrently             4.00 s
+== 12_buffers: EXPLAIN BUFFERS: cache vs disk
+   info    shared_buffers and what occupies it right now (pg_buffercache)
+   case    small_working_set                9.5 ms  Aggregate → Bitmap Heap Scan (metricarchive) → Bitmap Index Scan (metricarchive_url)
+   case    large_working_set                254 ms  Aggregate → Bitmap Heap Scan (metricarchive) → Bitmap Index Scan (metricarchive_url)
+   info    shared_buffers afterwards: the large query pushed other pages out
+== 13_expression_index: Expression index
+   case    function_no_index                366 ms  Aggregate → Parallel Seq Scan (metric)
+   step    expression index + ANALYZE (expression indexes get their own statistics)     2.57 s
+   case    expression_index                 3.5 ms  Aggregate → Index Scan (sc_metric_api_version)
+   info    Index size
+== 14_parallel_query: Parallel query
+   case    workers_0                        3.83 s  Limit → Sort → Aggregate → Seq Scan (metricarchive)
+   case    workers_2                        1.99 s  Limit → Sort → Aggregate → Parallel Seq Scan (metricarchive)
+   case    workers_4                        1.88 s  Limit → Sort → Aggregate → Parallel Seq Scan (metricarchive)
+   case    workers_6                        1.61 s  Limit → Sort → Aggregate → Parallel Seq Scan (metricarchive)
+== 15_planner_hints: Optimizer hints (MySQL) vs the PostgreSQL planner
+   case    planner_choice                  0.86 ms  Limit → Index Scan Backward (metric_date_c)
+   case    no_index_scan                     32 ms  Limit → Sort → Bitmap Heap Scan (metric) → BitmapAnd → Bitmap Index Scan (metric_consumerid) → Bitmap Index Scan (metric_date_c)
+   case    seqscan_only                     242 ms  Limit → Sort → Parallel Seq Scan (metric)
+== 16_generated_column: Stored generated column
+   setup   setup                            3.52 s
+   info    Table size before (copy of metric with 4 columns)
+   case    expression_no_index              241 ms  Aggregate → Parallel Seq Scan (sc_gen)
+   step    add STORED generated column api_version + index (rewrites the table)     5.39 s
+   case    generated_column                 3.3 ms  Aggregate → Index Scan (sc_gen_api_version)
+   info    Table size after: the stored value costs space in every row
+== 17_brin_index: BRIN index for time series (PostgreSQL's answer to columnstore-style scans)
+   setup   setup                            2.76 s
+   info    Sizes: B-tree vs BRIN on metricarchive.date_c (15M rows)
+   case    day_no_index                     851 ms  Aggregate → Parallel Seq Scan (metricarchive)
+   case    day_btree                        3.4 ms  Aggregate → Index Scan (metricarchive_date_c)
+   case    day_brin                          14 ms  Aggregate → Bitmap Heap Scan (metricarchive) → Bitmap Index Scan (sc_archive_date_brin)
+   case    month_btree                       46 ms  Aggregate → Parallel Index Scan (metricarchive_date_c)
+   case    month_brin                       498 ms  Aggregate → Parallel Bitmap Heap Scan (metricarchive) → Bitmap Index Scan (sc_archive_date_brin)
+== 18_trigram_search: Substring search: LIKE '%...%' vs trigram index
+   case    like_no_index                    379 ms  Aggregate → Parallel Seq Scan (metric)
+   step    GIN trigram index on url        27.89 s
+   case    like_trgm                        8.9 ms  Aggregate → Bitmap Heap Scan (metric) → Bitmap Index Scan (sc_metric_url_trgm)
+   case    ilike_trgm                        11 ms  Aggregate → Bitmap Heap Scan (metric) → Bitmap Index Scan (sc_metric_url_trgm)
+   info    Index size
+== 19_query_store: Query Store (SQL Server) = pg_stat_statements + pgstat
+   info    Top statements in obp_showcase by total time (pg_stat_statements, what this showcase ran)
+   info    History over time: ../pgstat keeps 15-minute snapshots (pgstat setup, then e.g.)
+== 20_finale_correlationid: Finale: tracing one request by correlation id
+   case    original                         1.15 s  Parallel Append → Parallel Seq Scan (metricarchive) → Parallel Seq Scan (metric)
+   case    insert_no_index                   96 ms  ModifyTable (metric) → Subquery Scan → Index Scan (lt_tpl_metric_pkey)
+   step    1. B-tree index on metric.correlationid (the live table)     6.46 s
+   case    metric_indexed                   785 ms  Append → Index Scan (sc_metric_correlationid) → Parallel Seq Scan (metricarchive)
+   case    insert_with_index                160 ms  ModifyTable (metric) → Subquery Scan → Index Scan (lt_tpl_metric_pkey)
+   step    2. B-tree and hash index on metricarchive.correlationid (15M rows) to compare    46.99 s
+   case    both_btree                      0.04 ms  Append → Index Scan (sc_metric_correlationid) → Index Scan (sc_archive_correlationid)
+   case    archive_hash                    0.04 ms  Append → Index Scan (sc_metric_correlationid) → Index Scan (sc_archive_correlationid_hash)
+   info    Index cost: sizes (correlation ids are 36-character UUID strings)
+Wrote REPORT.md and REPORT.html (21 demos)

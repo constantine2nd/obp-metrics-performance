@@ -1,0 +1,214 @@
+{
+ "file": "02_select_star.sql",
+ "title": "SELECT * vs only the needed columns",
+ "category": "Anti-pattern",
+ "claim": [
+  "SELECT * transfers more data and prevents covering indexes: with only indexed columns the database can",
+  "answer from the index without touching the table."
+ ],
+ "verdict": [
+  "Partly confirmed, with a delayed side effect. **SELECT * has a delayed side effect that no test can catch when",
+  "the code is written: its cost depends on columns that do not exist yet. When a column is added to the table",
+  "later, for example a large text or JSON field, every SELECT * starts reading, transferring and decoding it and",
+  "gets slower, without any change to the query and without a new deployment of the code that runs it.** Sending",
+  "all columns of 96k rows took {x:star_client/columns_client} longer than 4 columns (rows average 203 vs 83",
+  "bytes). The bigger win is the covering effect: with only indexed columns the query became an Index Only Scan,",
+  "{t:star_index} to {t:columns_index_only} ({x:star_index/columns_index_only}), reading {pages:columns_index_only}",
+  "pages instead of {pages:star_index}. metric rows are narrow; with large responsebody values the transfer gap",
+  "grows."
+ ],
+ "compare": [
+  "star_index",
+  "columns_index_only"
+ ],
+ "sections": [
+  {
+   "kind": "setup",
+   "label": "setup",
+   "ms": 3801.194667998061,
+   "sql": "SET maintenance_work_mem = '1GB';\nCREATE INDEX sc_metric_consumer_date_incl ON metric (consumerid, date_c) INCLUDE (duration, httpcode);\nVACUUM metric;"
+  },
+  {
+   "kind": "info",
+   "label": "Row width: all columns vs the 4 needed ones (average bytes per row, 1% sample)",
+   "sql": "SELECT round(avg(pg_column_size(m.*))) AS all_columns_bytes,\n       round(avg(pg_column_size(ROW(m.id, m.date_c, m.url, m.duration)))) AS four_columns_bytes\n  FROM metric m TABLESAMPLE SYSTEM (1);",
+   "output": "all_columns_bytes | four_columns_bytes \n-------------------+--------------------\n               199 |                 84\n(1 row)"
+  },
+  {
+   "label": "star_client",
+   "desc": "SELECT * of the last 7 days (~96k rows) sent to the client",
+   "mode": "script",
+   "first_ms": 158.7640969955828,
+   "median_ms": 141.36631999281235,
+   "runs": 5,
+   "sql": "SELECT * FROM metric WHERE date_c >= localtimestamp - interval '7 days';",
+   "kind": "case"
+  },
+  {
+   "label": "columns_client",
+   "desc": "same rows, only id, date_c, url, duration",
+   "mode": "script",
+   "first_ms": 54.48319299466675,
+   "median_ms": 54.48319299466675,
+   "runs": 5,
+   "sql": "SELECT id, date_c, url, duration FROM metric WHERE date_c >= localtimestamp - interval '7 days';",
+   "kind": "case"
+  },
+  {
+   "ms": 32.571,
+   "planning_ms": 0.395,
+   "hit": 15205,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 11689,
+   "width": 246,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Parallel Index Scan Backward (metric_date_c)",
+   "plan_text": "Gather Merge | rows=11689 (est 11530) loops=1 time=32.07 ms | workers=2 | buffers hit=15205 read=0\n  -> Parallel Index Scan Backward (metric_date_c) | cond (date_c >= (LOCALTIMESTAMP - '30 days'::interval)) | filter ((consumerid)::text = 'consumer-004'::text) | rows=3896 (est 4804) loops=3 time=22.849 ms | removed by filter=133006 | buffers hit=15205 read=0",
+   "label": "star_index",
+   "desc": "SELECT * for one consumer, last 30 days (index + table)",
+   "mode": "explain",
+   "first_ms": 162.668,
+   "median_ms": 40.562,
+   "runs": 5,
+   "sql": "SELECT * FROM metric WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;",
+   "first_read": 8762,
+   "first_hit": 6409,
+   "kind": "case"
+  },
+  {
+   "ms": 2.381,
+   "planning_ms": 0.554,
+   "hit": 89,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 11689,
+   "width": 20,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Index Only Scan Backward (sc_metric_consumer_date_incl)",
+   "plan_text": "Index Only Scan Backward (sc_metric_consumer_date_incl) | cond ((consumerid = 'consumer-004'::text) AND (date_c >= (LOCALTIMESTAMP - '30 days'::interval))) | rows=11689 (est 11530) loops=1 time=2.005 ms | heap fetches=0 | buffers hit=89 read=0",
+   "label": "columns_index_only",
+   "desc": "only columns that are in the index -> Index Only Scan",
+   "mode": "explain",
+   "first_ms": 1.78,
+   "median_ms": 1.609,
+   "runs": 5,
+   "sql": "SELECT date_c, duration, httpcode FROM metric\n WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;\n\n-- Delayed side effect: the same unchanged SELECT * before and after a later migration adds a wide column.\n-- Uses a copy of the last 30 days of metric, so the real table is not rewritten.",
+   "first_read": 88,
+   "first_hit": 1,
+   "kind": "case"
+  },
+  {
+   "kind": "step",
+   "label": "copy of the last 30 days of metric (~410k rows) with its index",
+   "ms": 730.5815100044128,
+   "sql": "SET maintenance_work_mem = '1GB';\nDROP TABLE IF EXISTS sc_wide;\nCREATE TABLE sc_wide AS SELECT * FROM metric WHERE date_c >= localtimestamp - interval '30 days';\nCREATE INDEX sc_wide_consumer_date ON sc_wide (consumerid, date_c);\nVACUUM ANALYZE sc_wide;"
+  },
+  {
+   "kind": "info",
+   "label": "Table size before the migration",
+   "sql": "SELECT pg_size_pretty(pg_table_size('sc_wide')) AS table_incl_toast, (SELECT count(*) FROM sc_wide) AS rows;",
+   "output": "table_incl_toast |  rows  \n------------------+--------\n 82 MB            | 410706\n(1 row)"
+  },
+  {
+   "label": "wide_star_before",
+   "desc": "SELECT * for one consumer, 30 days, sent to the client (before)",
+   "mode": "script",
+   "first_ms": 49.14206899411511,
+   "median_ms": 30.15851299278438,
+   "runs": 5,
+   "sql": "SELECT * FROM sc_wide WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;",
+   "kind": "case"
+  },
+  {
+   "label": "wide_columns_before",
+   "desc": "the same rows, only the 5 needed columns (before)",
+   "mode": "script",
+   "first_ms": 27.438596996944398,
+   "median_ms": 23.137118994782213,
+   "runs": 5,
+   "sql": "SELECT id, date_c, url, duration, httpcode FROM sc_wide\n WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;",
+   "kind": "case"
+  },
+  {
+   "ms": 14.956,
+   "planning_ms": 0.441,
+   "hit": 7397,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 11689,
+   "width": 246,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Sort \u2192 Bitmap Heap Scan (sc_wide) \u2192 Bitmap Index Scan (sc_wide_consumer_date)",
+   "plan_text": "Sort | rows=11689 (est 11553) loops=1 time=14.499 ms | sort=quicksort 4020kB Memory | buffers hit=7397 read=0\n  -> Bitmap Heap Scan (sc_wide) | rows=11689 (est 11553) loops=1 time=10.744 ms | buffers hit=7394 read=0\n    -> Bitmap Index Scan (sc_wide_consumer_date) | cond (((consumerid)::text = 'consumer-004'::text) AND (date_c >= (LOCALTIMESTAMP - '30 days'::interval))) | rows=11689 (est 11553) loops=1 time=1.798 ms | buffers hit=60 read=0",
+   "label": "wide_star_before_server",
+   "desc": "server side of SELECT * (before)",
+   "mode": "explain",
+   "first_ms": 13.005,
+   "median_ms": 13.42,
+   "runs": 5,
+   "sql": "SELECT * FROM sc_wide WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;",
+   "first_read": 0,
+   "first_hit": 7397,
+   "kind": "case"
+  },
+  {
+   "kind": "step",
+   "label": "a later migration adds a JSON column (~2 kB per row), no query changes",
+   "ms": 38343.695488001686,
+   "sql": "ALTER TABLE sc_wide ADD COLUMN details text;\nUPDATE sc_wide SET details = (SELECT '{\"request\":{\"headers\":{},\"body\":\"' || string_agg(md5(sc_wide.id::text || g), '')\n                                     || '\"},\"response\":{\"status\":200}}' FROM generate_series(1, 60) g);\nVACUUM FULL sc_wide;\nANALYZE sc_wide;"
+  },
+  {
+   "kind": "info",
+   "label": "Table size after the migration (the new values are stored out of line in the TOAST table)",
+   "sql": "SELECT pg_size_pretty(pg_table_size('sc_wide')) AS table_incl_toast,\n       pg_size_pretty(pg_relation_size((SELECT reltoastrelid FROM pg_class WHERE relname = 'sc_wide'))) AS toast_part,\n       round(avg(length(details))) AS avg_details_chars\n  FROM sc_wide;",
+   "output": "table_incl_toast | toast_part | avg_details_chars \n------------------+------------+-------------------\n 905 MB           | 802 MB     |              1982\n(1 row)"
+  },
+  {
+   "label": "wide_star_after",
+   "desc": "the SAME SELECT * after the migration, sent to the client",
+   "mode": "script",
+   "first_ms": 133.60584599286085,
+   "median_ms": 143.79799599555554,
+   "runs": 5,
+   "sql": "SELECT * FROM sc_wide WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;",
+   "kind": "case"
+  },
+  {
+   "label": "wide_columns_after",
+   "desc": "the SAME explicit-column query after the migration",
+   "mode": "script",
+   "first_ms": 35.69447399058845,
+   "median_ms": 22.90341999469092,
+   "runs": 5,
+   "sql": "SELECT id, date_c, url, duration, httpcode FROM sc_wide\n WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;",
+   "kind": "case"
+  },
+  {
+   "ms": 20.758,
+   "planning_ms": 0.387,
+   "hit": 7602,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 11689,
+   "width": 264,
+   "temp": 378,
+   "heap_fetches": 0,
+   "plan": "Sort \u2192 Bitmap Heap Scan (sc_wide) \u2192 Bitmap Index Scan (sc_wide_consumer_date)",
+   "plan_text": "Sort | rows=11689 (est 11348) loops=1 time=20.146 ms | sort=external merge 3016kB Disk | buffers hit=7602 read=0\n  -> Bitmap Heap Scan (sc_wide) | rows=11689 (est 11348) loops=1 time=12.771 ms | buffers hit=7599 read=0\n    -> Bitmap Index Scan (sc_wide_consumer_date) | cond (((consumerid)::text = 'consumer-004'::text) AND (date_c >= (LOCALTIMESTAMP - '30 days'::interval))) | rows=11689 (est 11348) loops=1 time=1.287 ms | buffers hit=60 read=0",
+   "label": "wide_star_after_server",
+   "desc": "server side of the same SELECT * (after)",
+   "mode": "explain",
+   "first_ms": 18.217,
+   "median_ms": 20.546,
+   "runs": 5,
+   "sql": "SELECT * FROM sc_wide WHERE consumerid = 'consumer-004' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC;",
+   "first_read": 0,
+   "first_hit": 7602,
+   "kind": "case"
+  }
+ ]
+}

@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+
+# archived report copies (the latest is always REPORT.html / REPORT.md)
+loadtest/reports/
+showcase/reports/

@@ -1,0 +1,54 @@
+{
+  "scenario": "read",
+  "clients": 16,
+  "tps": 219.047264,
+  "transactions": 65756,
+  "latency_avg_ms": 73.013,
+  "p50_ms": 13.77,
+  "p95_ms": 306.84,
+  "p99_ms": 597.35,
+  "scripts": {
+    "r_list.sql": {
+      "tps": 87.351076,
+      "p50_ms": 6.1,
+      "p95_ms": 162.76,
+      "p99_ms": 341.79,
+      "samples": 2592
+    },
+    "r_aggregate.sql": {
+      "tps": 32.812451,
+      "p50_ms": 38.57,
+      "p95_ms": 235.88,
+      "p99_ms": 395.61,
+      "samples": 978
+    },
+    "r_top_apis.sql": {
+      "tps": 21.626237,
+      "p50_ms": 147.92,
+      "p95_ms": 520.99,
+      "p99_ms": 700.16,
+      "samples": 648
+    },
+    "r_top_consumers.sql": {
+      "tps": 22.049301,
+      "p50_ms": 126.79,
+      "p95_ms": 393.51,
+      "p99_ms": 620.82,
+      "samples": 681
+    },
+    "r_lookup.sql": {
+      "tps": 32.982343,
+      "p50_ms": 0.18,
+      "p95_ms": 15.31,
+      "p99_ms": 23.55,
+      "samples": 1003
+    },
+    "r_archive_search.sql": {
+      "tps": 22.205868,
+      "p50_ms": 40.91,
+      "p95_ms": 542.01,
+      "p99_ms": 2701.49,
+      "samples": 671
+    }
+  }
+}

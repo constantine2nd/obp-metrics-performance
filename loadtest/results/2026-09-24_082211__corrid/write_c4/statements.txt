@@ -1,0 +1,6 @@
+ calls  | total_ms | mean_ms | max_ms |  rows  | cache_blks | disk_blks | read_ms | temp_blks |                                                          query                                                           
+--------+----------+---------+--------+--------+------------+-----------+---------+-----------+--------------------------------------------------------------------------------------------------------------------------
+ 369932 |  12974.9 |   0.035 |    2.0 | 369932 |    6611567 |    267358 |   671.5 |         0 | INSERT INTO metric (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, a
+      1 |    229.3 | 229.304 |  229.3 |      0 |          0 |         0 |     0.0 |         0 | CHECKPOINT
+      1 |      0.0 |   0.034 |    0.0 |      1 |          1 |         0 |     0.0 |         0 | SELECT pg_stat_statements_reset(0, (SELECT oid FROM pg_database WHERE datname = current_database()), 0)
+

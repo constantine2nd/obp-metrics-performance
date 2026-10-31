@@ -1,0 +1,22 @@
+ calls | total_ms  | mean_ms | max_ms |  rows  | cache_blks | disk_blks | read_ms  | temp_blks |                                                          query                                                           
+-------+-----------+---------+--------+--------+------------+-----------+----------+-----------+--------------------------------------------------------------------------------------------------------------------------
+  2080 | 1353045.4 | 650.503 | 2008.0 |  20800 |  154336375 |   3148577 |  22065.8 |         0 | SELECT implementedbypartialfunction, implementedinversion, count(*) AS calls, avg(duration) AS avg_duration FROM metric 
+  2121 | 1197475.1 | 564.580 | 1629.6 |  21210 |  157417023 |   3137621 |  21271.4 |         0 | SELECT consumerid, appname, developeremail, count(*) AS calls FROM metric WHERE date_c >= localtimestamp - make_interval
+  2754 |  802488.4 | 291.390 | 1104.4 |  70678 |  148838305 |   2171187 |  10795.3 |         0 | SELECT * FROM metric WHERE implementedbypartialfunction = $1 AND date_c >= localtimestamp - make_interval(days => $2) OR
+  1393 |  513008.7 | 368.276 | 1266.4 |   1393 |  103448946 |   2279561 |  14110.5 |         0 | SELECT count(*), avg(duration), min(duration), max(duration) FROM metric WHERE date_c >= localtimestamp - make_interval(
+  1052 |  419142.4 | 398.424 | 6008.2 |  16903 |    3730440 |  20733810 | 106641.6 |         0 | SELECT * FROM metricarchive WHERE consumerid = $1 AND date_c BETWEEN localtimestamp - make_interval(days => $2) AND loca
+  1378 |  175588.0 | 127.422 | 1006.4 |   1378 |   21190792 |    796151 |   4539.6 |         0 | SELECT count(*), avg(duration), min(duration), max(duration) FROM metric WHERE consumerid = $1 AND date_c >= localtimest
+  2769 |  103187.2 |  37.265 |  272.0 | 104078 |    5197530 |    318554 |   1088.2 |         0 | SELECT * FROM metric WHERE consumerid = $1 AND date_c >= localtimestamp - make_interval(days => $2) ORDER BY date_c DESC
+   590 |   64430.0 | 109.203 |  239.8 | 295000 |    9173435 |   1861100 |   6633.0 |         0 | WITH moved AS ( DELETE FROM metric WHERE id IN (SELECT id FROM metric WHERE date_c < localtimestamp - make_interval(days
+  1040 |   37275.9 |  35.842 |  880.7 |   6447 |       4685 |    452396 |   1842.0 |         0 | SELECT * FROM metricarchive WHERE url = $1 AND date_c BETWEEN localtimestamp - make_interval(days => $2) AND localtimest
+ 49146 |   14705.8 |   0.299 |   47.7 |  49146 |     720939 |    205700 |   1010.2 |         0 | INSERT INTO metric (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, a
+   590 |   10187.6 |  17.267 |  115.5 |  59000 |     261092 |    663471 |   2413.6 |         0 | DELETE FROM metricarchive WHERE id IN (SELECT id FROM metricarchive WHERE date_c < localtimestamp - make_interval(days =
+  3380 |    7304.0 |   2.161 |   86.0 |   3380 |      82252 |    607553 |   2414.1 |         0 | SELECT coalesce((SELECT correlationid FROM metric WHERE id >= $1 ORDER BY id LIMIT $2), $3) AS corr
+  2696 |    6192.3 |   2.297 |   48.7 | 134800 |    2185151 |      1362 |      3.5 |         0 | SELECT * FROM metric WHERE httpcode >= $3 AND date_c >= localtimestamp - make_interval(days => $1) ORDER BY date_c DESC 
+  8993 |     588.6 |   0.065 |   25.4 |   8993 |      19258 |      7721 |     27.5 |         0 | SELECT val AS v FROM lt_values WHERE kind = $2 AND k = $1
+  3380 |     374.3 |   0.111 |   22.3 |   3371 |      10488 |      6412 |     28.2 |         0 | SELECT * FROM metric WHERE correlationid = $1
+     1 |      41.4 |  41.351 |   41.4 |      0 |          0 |         0 |      0.0 |         0 | CHECKPOINT
+     1 |       0.1 |   0.053 |    0.1 |      1 |          1 |         0 |      0.0 |         0 | SELECT pg_stat_statements_reset(0, (SELECT oid FROM pg_database WHERE datname = current_database()), 0)
+     1 |       0.0 |   0.005 |    0.0 |      0 |          0 |         0 |      0.0 |         0 | BEGIN
+     1 |       0.0 |   0.002 |    0.0 |      0 |          0 |         0 |      0.0 |         0 | END
+

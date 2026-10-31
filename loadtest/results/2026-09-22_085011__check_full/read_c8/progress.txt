@@ -1,0 +1,2 @@
+progress: 10.0 s, 17.1 tps, lat 434.430 ms stddev 748.275
+progress: 20.0 s, 30.9 tps, lat 269.252 ms stddev 523.553

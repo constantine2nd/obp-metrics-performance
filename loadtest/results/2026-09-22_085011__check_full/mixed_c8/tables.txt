@@ -1,0 +1,24 @@
+    relname    | seq_scan | seq_tup_read | idx_scan |  ins  |  del  | est_rows | dead  | autovac | autoanalyze |  data   | indexes 
+---------------+----------+--------------+----------+-------+-------+----------+-------+---------+-------------+---------+---------
+ metric        |      227 |    492443410 |    17895 |  1229 | 17000 |  5042488 | 17000 |       0 |           0 | 1015 MB | 349 MB
+ metricarchive |        0 |            0 |     3600 | 17000 |  3400 | 15141706 |  3400 |       0 |           0 | 3621 MB | 1465 MB
+
+    relname    |              indexrelname              | idx_scan |  size  
+---------------+----------------------------------------+----------+--------
+ metric        | metric_pk                              |    17174 | 108 MB
+ metric        | metric_date_c                          |      646 | 108 MB
+ metric        | metric_consumerid                      |       75 | 33 MB
+ metric        | metric_userid_idx                      |        0 | 34 MB
+ metric        | idx_metric_consent_reference_id        |        0 | 33 MB
+ metric        | metric_consent_reference_id            |        0 | 33 MB
+ metricarchive | metricarchive_pk                       |     3470 | 325 MB
+ metricarchive | metricarchive_date_c                   |       83 | 325 MB
+ metricarchive | metricarchive_url                      |       34 | 108 MB
+ metricarchive | metricarchive_consumerid               |       13 | 100 MB
+ metricarchive | metricarchive_appname                  |        0 | 101 MB
+ metricarchive | idx_metricarchive_consent_reference_id |        0 | 100 MB
+ metricarchive | metricarchive_consent_reference_id     |        0 | 100 MB
+ metricarchive | metricarchive_developeremail           |        0 | 102 MB
+ metricarchive | metricarchive_userid                   |        0 | 104 MB
+ metricarchive | metricarchive_username                 |        0 | 101 MB
+

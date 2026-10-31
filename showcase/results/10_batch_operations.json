@@ -1,0 +1,93 @@
+{
+ "file": "10_batch_operations.sql",
+ "title": "Row-by-row vs batch: the archive job",
+ "category": "Query pattern",
+ "claim": [
+  "Individual operations in loops are death by a thousand cuts; one set-based statement is often 10-100x faster."
+ ],
+ "verdict": [
+  "Confirmed, and confirmed in OBP's code. Moving 10,000 rows one at a time (20,000 statements) took {t:row_by_row}",
+  "vs {t:batch_client} as one DELETE ... RETURNING + INSERT ({x:row_by_row/batch_client}). OBP's",
+  "MetricsArchiveScheduler does worse: per row it looks the archive row up by metricId twice (dedup in",
+  "saveMetricsArchive, then a verify) and MetricArchive declares no index on metricId, so every archived row costs",
+  "two full scans of metricarchive: {div:row_by_row_checked/10} per row at 15M rows, so one scheduled batch of",
+  "10,000 rows would take hours instead of fitting its 10-minute interval. With an index on metricId the same 10",
+  "rows took {t:row_by_row_checked_indexed}. It matches the counters in the source OBP database: 1,542 scans of",
+  "metricarchive for the 766-row run on 2026-08-19. Fix: add Index(metricId) to MetricArchive.dbIndexes."
+ ],
+ "compare": [
+  "row_by_row",
+  "batch_client"
+ ],
+ "sections": [
+  {
+   "label": "row_by_row",
+   "desc": "INSERT + DELETE per row, 20,000 statements",
+   "mode": "script",
+   "first_ms": 1490.3407799938577,
+   "median_ms": 1490.3407799938577,
+   "runs": 3,
+   "sql": "SELECT format('INSERT INTO metricarchive (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, metricid, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid) SELECT url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, id, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid FROM metric WHERE id = %s', id),\n       format('DELETE FROM metric WHERE id = %s', id)\n  FROM (SELECT id FROM metric ORDER BY date_c LIMIT 10000) x \\gexec",
+   "kind": "case"
+  },
+  {
+   "label": "batch_client",
+   "desc": "one statement: DELETE ... RETURNING feeding the INSERT",
+   "mode": "script",
+   "first_ms": 246.05372299265582,
+   "median_ms": 213.14087699283846,
+   "runs": 5,
+   "sql": "WITH moved AS (\n  DELETE FROM metric WHERE id IN (SELECT id FROM metric ORDER BY date_c LIMIT 10000) RETURNING *)\nINSERT INTO metricarchive (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, metricid, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid)\nSELECT url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, id, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid FROM moved;",
+   "kind": "case"
+  },
+  {
+   "ms": 195.493,
+   "planning_ms": 0.524,
+   "hit": 305058,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 0,
+   "width": 0,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "ModifyTable (metricarchive) \u2192 ModifyTable (metric) \u2192 Nested Loop \u2192 Aggregate \u2192 Subquery Scan \u2192 Limit \u2192 \u2026",
+   "plan_text": "ModifyTable (metricarchive) | rows=0 (est 0) loops=1 time=194.901 ms | buffers hit=305058 read=0\n  -> ModifyTable (metric) | rows=10000 (est 10000) loops=1 time=34.805 ms | buffers hit=68192 read=0\n    -> Nested Loop | rows=10000 (est 10000) loops=1 time=26.766 ms | buffers hit=48192 read=0\n      -> Aggregate | rows=10000 (est 10000) loops=1 time=10.653 ms | buffers hit=8192 read=0\n        -> Subquery Scan | rows=10000 (est 10000) loops=1 time=5.728 ms | buffers hit=8192 read=0\n          -> Limit | rows=10000 (est 10000) loops=1 time=4.441 ms | buffers hit=8192 read=0\n            -> Index Scan (metric_date_c) | rows=10000 (est 5032517) loops=1 time=3.978 ms | buffers hit=8192 read=0\n      -> Index Scan (metric_pk) | cond (id = \"ANY_subquery\".id) | rows=1 (est 1) loops=10000 time=0.001 ms | buffers hit=40000 read=0\n  -> CTE Scan | rows=10000 (est 10000) loops=1 time=46.81 ms | buffers hit=78204 read=0",
+   "label": "batch_server",
+   "desc": "server-side plan of the batch statement",
+   "mode": "explain",
+   "first_ms": 199.595,
+   "median_ms": 205.463,
+   "runs": 5,
+   "sql": "WITH moved AS (\n  DELETE FROM metric WHERE id IN (SELECT id FROM metric ORDER BY date_c LIMIT 10000) RETURNING *)\nINSERT INTO metricarchive (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, metricid, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid)\nSELECT url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, id, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid FROM moved;\n\n-- OBP's MetricsArchiveScheduler (obp-api/src/main/scala/code/scheduler/MetricsArchiveScheduler.scala) per row:\n-- saveMetricsArchive() looks the row up by metricId (dedup), inserts it, the scheduler looks it up by metricId\n-- again (verify), then deletes the source row. MetricArchive declares no index on metricId.",
+   "first_read": 0,
+   "first_hit": 305237,
+   "kind": "case"
+  },
+  {
+   "label": "row_by_row_checked",
+   "desc": "10 rows the OBP way: 2 lookups by metricid (no index) + INSERT + DELETE per row",
+   "mode": "script",
+   "first_ms": 15732.366266995086,
+   "median_ms": 15732.366266995086,
+   "runs": 1,
+   "sql": "SELECT format('SELECT * FROM metricarchive WHERE metricid = %s', id),\n       format('INSERT INTO metricarchive (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, metricid, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid) SELECT url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, id, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid FROM metric WHERE id = %s', id),\n       format('SELECT * FROM metricarchive WHERE metricid = %s', id),\n       format('DELETE FROM metric WHERE id = %s', id)\n  FROM (SELECT id FROM metric ORDER BY date_c LIMIT 10) x \\gexec",
+   "kind": "case"
+  },
+  {
+   "kind": "step",
+   "label": "index on metricarchive.metricid",
+   "ms": 4670.995847001905,
+   "sql": "SET maintenance_work_mem = '1GB';\nCREATE INDEX sc_archive_metricid ON metricarchive (metricid);"
+  },
+  {
+   "label": "row_by_row_checked_indexed",
+   "desc": "the same 10 rows the OBP way, with the index",
+   "mode": "script",
+   "first_ms": 10.771501998533495,
+   "median_ms": 8.33126299403375,
+   "runs": 3,
+   "sql": "SELECT format('SELECT * FROM metricarchive WHERE metricid = %s', id),\n       format('INSERT INTO metricarchive (url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, metricid, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid) SELECT url, duration, username, date_c, userid, implementedbypartialfunction, developeremail, consumerid, appname, implementedinversion, verb, correlationid, httpcode, id, responsebody, sourceip, targetip, consent_reference_id, apiinstanceid FROM metric WHERE id = %s', id),\n       format('SELECT * FROM metricarchive WHERE metricid = %s', id),\n       format('DELETE FROM metric WHERE id = %s', id)\n  FROM (SELECT id FROM metric ORDER BY date_c LIMIT 10) x \\gexec",
+   "kind": "case"
+  }
+ ]
+}

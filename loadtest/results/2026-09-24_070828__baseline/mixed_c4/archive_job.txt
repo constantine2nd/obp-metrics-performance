@@ -1,0 +1,13 @@
+pgbench (14.24 (Ubuntu 14.24-0ubuntu0.22.04.1))
+transaction type: ~/obp-metrics-performance/loadtest/workloads/job_archive_batch.sql
+scaling factor: 1
+query mode: prepared
+number of clients: 1
+number of threads: 1
+duration: 300 s
+number of transactions actually processed: 605
+latency average = 51.273 ms
+latency stddev = 17.108 ms
+rate limit schedule lag: avg 3.345 (max 74.897) ms
+initial connection time = 1.336 ms
+tps = 2.029291 (without initial connection time)

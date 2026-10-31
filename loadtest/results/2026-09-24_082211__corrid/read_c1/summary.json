@@ -1,0 +1,54 @@
+{
+  "scenario": "read",
+  "clients": 1,
+  "tps": 106.774811,
+  "transactions": 32033,
+  "latency_avg_ms": 9.364,
+  "p50_ms": 2.32,
+  "p95_ms": 34.47,
+  "p99_ms": 59.25,
+  "scripts": {
+    "r_list.sql": {
+      "tps": 42.36593,
+      "p50_ms": 0.68,
+      "p95_ms": 26.11,
+      "p99_ms": 43.52,
+      "samples": 1359
+    },
+    "r_aggregate.sql": {
+      "tps": 16.203052,
+      "p50_ms": 6.92,
+      "p95_ms": 21.87,
+      "p99_ms": 27.89,
+      "samples": 515
+    },
+    "r_top_apis.sql": {
+      "tps": 10.786479,
+      "p50_ms": 22.19,
+      "p95_ms": 41.25,
+      "p99_ms": 50.27,
+      "samples": 331
+    },
+    "r_top_consumers.sql": {
+      "tps": 10.693148,
+      "p50_ms": 18.01,
+      "p95_ms": 37.66,
+      "p99_ms": 42.1,
+      "samples": 316
+    },
+    "r_lookup.sql": {
+      "tps": 15.933056,
+      "p50_ms": 0.23,
+      "p95_ms": 1.68,
+      "p99_ms": 8.81,
+      "samples": 499
+    },
+    "r_archive_search.sql": {
+      "tps": 10.793146,
+      "p50_ms": 9.15,
+      "p95_ms": 85.02,
+      "p99_ms": 151.64,
+      "samples": 324
+    }
+  }
+}

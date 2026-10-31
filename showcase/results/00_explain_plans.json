@@ -1,0 +1,53 @@
+{
+ "file": "00_explain_plans.sql",
+ "title": "Reading an execution plan",
+ "category": "Execution plans",
+ "claim": [
+  "EXPLAIN shows the plan without running the query; EXPLAIN ANALYZE runs it and adds real timings.",
+  "Watch estimated vs actual rows, scan types (Seq Scan vs Index Scan), join methods and the costliest node."
+ ],
+ "verdict": [
+  "Confirmed. The plan shows the query walking metric_date_c backwards and filtering by consumer: thousands of rows",
+  "are read and thrown away to return 50 (Rows Removed by Filter). The first run had to fetch those pages",
+  "({first:metrics_list}), repeats found them in cache ({t:metrics_list}). BUFFERS explains most 'same query,",
+  "different speed' puzzles."
+ ],
+ "compare": null,
+ "sections": [
+  {
+   "kind": "info",
+   "label": "1. EXPLAIN: the plan the optimizer picked, estimates only (the query is not executed)",
+   "sql": "EXPLAIN\nSELECT id, date_c, url, duration, httpcode FROM metric\n WHERE consumerid = 'consumer-010' AND date_c >= localtimestamp - interval '30 days'\n ORDER BY date_c DESC LIMIT 50;",
+   "output": "QUERY PLAN                                             \n---------------------------------------------------------------------------------------------------\n Limit  (cost=0.44..418.45 rows=50 width=60)\n   ->  Index Scan Backward using metric_date_c on metric  (cost=0.44..36283.81 rows=4340 width=60)\n         Index Cond: (date_c >= (LOCALTIMESTAMP - '30 days'::interval))\n         Filter: ((consumerid)::text = 'consumer-010'::text)\n(4 rows)"
+  },
+  {
+   "kind": "info",
+   "label": "2. EXPLAIN (ANALYZE, BUFFERS): executed; actual rows, time per node and pages (hit = cache, read = disk/OS)",
+   "sql": "EXPLAIN (ANALYZE, BUFFERS)\nSELECT id, date_c, url, duration, httpcode FROM metric\n WHERE consumerid = 'consumer-010' AND date_c >= localtimestamp - interval '30 days'\n ORDER BY date_c DESC LIMIT 50;",
+   "output": "QUERY PLAN                                                                  \n----------------------------------------------------------------------------------------------------------------------------------------------\n Limit  (cost=0.44..418.45 rows=50 width=60) (actual time=0.097..9.903 rows=50 loops=1)\n   Buffers: shared hit=36 read=152\n   I/O Timings: read=9.221\n   ->  Index Scan Backward using metric_date_c on metric  (cost=0.44..36283.81 rows=4340 width=60) (actual time=0.096..9.894 rows=50 loops=1)\n         Index Cond: (date_c >= (LOCALTIMESTAMP - '30 days'::interval))\n         Filter: ((consumerid)::text = 'consumer-010'::text)\n         Rows Removed by Filter: 5088\n         Buffers: shared hit=36 read=152\n         I/O Timings: read=9.221\n Planning:\n   Buffers: shared hit=212\n Planning Time: 0.338 ms\n Execution Time: 9.923 ms\n(13 rows)"
+  },
+  {
+   "ms": 0.63,
+   "planning_ms": 0.337,
+   "hit": 188,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 50,
+   "width": 60,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Limit \u2192 Index Scan Backward (metric_date_c)",
+   "plan_text": "Limit | rows=50 (est 50) loops=1 time=0.612 ms | buffers hit=188 read=0\n  -> Index Scan Backward (metric_date_c) | cond (date_c >= (LOCALTIMESTAMP - '30 days'::interval)) | filter ((consumerid)::text = 'consumer-010'::text) | rows=50 (est 4340) loops=1 time=0.608 ms | removed by filter=5088 | buffers hit=188 read=0",
+   "label": "metrics_list",
+   "desc": "GET /management/metrics for one consumer, last 30 days, newest 50",
+   "mode": "explain",
+   "first_ms": 0.624,
+   "median_ms": 0.648,
+   "runs": 5,
+   "sql": "SELECT id, date_c, url, duration, httpcode FROM metric\n WHERE consumerid = 'consumer-010' AND date_c >= localtimestamp - interval '30 days'\n ORDER BY date_c DESC LIMIT 50;",
+   "first_read": 0,
+   "first_hit": 188,
+   "kind": "case"
+  }
+ ]
+}

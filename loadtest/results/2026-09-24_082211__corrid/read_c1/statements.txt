@@ -1,0 +1,17 @@
+ calls | total_ms | mean_ms | max_ms |  rows  | cache_blks | disk_blks | read_ms | temp_blks |                                                          query                                                           
+-------+----------+---------+--------+--------+------------+-----------+---------+-----------+--------------------------------------------------------------------------------------------------------------------------
+  3236 |  65714.7 |  20.307 |   63.1 |  30060 |   12977311 |    897549 |  1687.9 |         0 | SELECT implementedbypartialfunction, implementedinversion, count(*) AS calls, avg(duration) AS avg_duration FROM metric 
+  1649 |  60012.6 |  36.393 |  328.8 |  25638 |   27147285 |  12684990 | 17680.7 |         0 | SELECT * FROM metricarchive WHERE consumerid = $1 AND date_c BETWEEN localtimestamp - make_interval(days => $2) AND loca
+  3208 |  54281.2 |  16.921 |   54.7 |  29670 |   12685112 |    838074 |  1560.6 |         0 | SELECT consumerid, appname, developeremail, count(*) AS calls FROM metric WHERE date_c >= localtimestamp - make_interval
+  4293 |  51139.7 |  11.912 |   61.7 |  66645 |   12676590 |    703299 |   882.7 |         0 | SELECT * FROM metric WHERE implementedbypartialfunction = $1 AND date_c >= localtimestamp - make_interval(days => $2) OR
+  2462 |  25878.7 |  10.511 |   33.9 |   2462 |    9693858 |    614688 |  1136.3 |         0 | SELECT count(*), avg(duration), min(duration), max(duration) FROM metric WHERE date_c >= localtimestamp - make_interval(
+  2399 |  13363.9 |   5.571 |   29.0 |   2399 |    3039377 |    287820 |   434.6 |         0 | SELECT count(*), avg(duration), min(duration), max(duration) FROM metric WHERE consumerid = $1 AND date_c >= localtimest
+  1589 |   9652.5 |   6.075 |  111.2 |   9968 |      22334 |    664723 |  1126.9 |         0 | SELECT * FROM metricarchive WHERE url = $1 AND date_c BETWEEN localtimestamp - make_interval(days => $2) AND localtimest
+  4214 |   9277.9 |   2.202 |   13.1 | 103159 |    1312605 |    222085 |   309.6 |         0 | SELECT * FROM metric WHERE consumerid = $1 AND date_c >= localtimestamp - make_interval(days => $2) ORDER BY date_c DESC
+  4780 |   3051.8 |   0.638 |   31.5 |   4780 |       5278 |     13842 |  2982.9 |         0 | SELECT coalesce((SELECT correlationid FROM metric WHERE id >= $1 ORDER BY id LIMIT $2), $3) AS corr
+  4203 |   1213.0 |   0.289 |    1.2 | 183531 |     285263 |      2075 |     2.7 |         0 | SELECT * FROM metric WHERE httpcode >= $3 AND date_c >= localtimestamp - make_interval(days => $1) ORDER BY date_c DESC 
+ 14144 |    135.1 |   0.010 |    0.1 |  14144 |      37039 |      5393 |    13.6 |         0 | SELECT val AS v FROM lt_values WHERE kind = $2 AND k = $1
+  4780 |     81.1 |   0.017 |    0.3 |   4780 |      12932 |     10968 |    22.1 |         0 | SELECT * FROM metric WHERE correlationid = $1
+     1 |     50.6 |  50.623 |   50.6 |      0 |          0 |         0 |     0.0 |         0 | CHECKPOINT
+     1 |      0.2 |   0.187 |    0.2 |      1 |          1 |         0 |     0.0 |         0 | SELECT pg_stat_statements_reset(0, (SELECT oid FROM pg_database WHERE datname = current_database()), 0)
+

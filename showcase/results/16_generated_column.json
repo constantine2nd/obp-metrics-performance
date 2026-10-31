@@ -1,0 +1,91 @@
+{
+ "file": "16_generated_column.sql",
+ "title": "Stored generated column",
+ "category": "Indexing (generated columns)",
+ "claim": [
+  "Store a computed value as a generated column and index it; trades storage for query speed."
+ ],
+ "verdict": [
+  "Confirmed, though in PostgreSQL an expression index does the same without storing a column. The generated column",
+  "+ index took the query from {t:expression_no_index} to {t:generated_column}",
+  "({x:expression_no_index/generated_column}), like the expression index in demo 13, but added 39 MB to a 423 MB",
+  "table (+9%) and rewrote the whole table. Use a generated column when the value is also selected or reused in",
+  "many queries."
+ ],
+ "compare": [
+  "expression_no_index",
+  "generated_column"
+ ],
+ "sections": [
+  {
+   "kind": "setup",
+   "label": "setup",
+   "ms": 3519.285946000309,
+   "sql": "DROP TABLE IF EXISTS sc_gen;\nCREATE TABLE sc_gen AS SELECT id, url, duration, date_c FROM metric;\nANALYZE sc_gen;"
+  },
+  {
+   "kind": "info",
+   "label": "Table size before (copy of metric with 4 columns)",
+   "sql": "SELECT pg_size_pretty(pg_table_size('sc_gen')) AS table_size;",
+   "output": "table_size \n------------\n 423 MB\n(1 row)"
+  },
+  {
+   "ms": 245.865,
+   "planning_ms": 0.222,
+   "hit": 2464,
+   "read": 51714,
+   "io_ms": 68.582,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Parallel Seq Scan (sc_gen)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=245.798 ms | buffers hit=2464 read=51714\n  -> Gather | rows=3 (est 2) loops=1 time=245.784 ms | workers=2 | buffers hit=2464 read=51714\n    -> Aggregate | rows=1 (est 1) loops=3 time=240.963 ms | buffers hit=2464 read=51714\n      -> Parallel Seq Scan (sc_gen) | filter (split_part((url)::text, '/'::text, 3) = 'v4.0.0'::text) | rows=1135 (est 10484) loops=3 time=240.736 ms | removed by filter=1676371 | buffers hit=2464 read=51714",
+   "label": "expression_no_index",
+   "desc": "split_part(url, '/', 3) = 'v4.0.0', computed for every row",
+   "mode": "explain",
+   "first_ms": 227.19,
+   "median_ms": 240.98,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM sc_gen WHERE split_part(url, '/', 3) = 'v4.0.0';",
+   "first_read": 52098,
+   "first_hit": 2080,
+   "kind": "case"
+  },
+  {
+   "kind": "step",
+   "label": "add STORED generated column api_version + index (rewrites the table)",
+   "ms": 5390.3599769982975,
+   "sql": "SET maintenance_work_mem = '1GB';\nALTER TABLE sc_gen ADD COLUMN api_version text GENERATED ALWAYS AS (split_part(url, '/', 3)) STORED;\nCREATE INDEX sc_gen_api_version ON sc_gen (api_version);\nANALYZE sc_gen;"
+  },
+  {
+   "ms": 3.32,
+   "planning_ms": 0.251,
+   "hit": 3376,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Index Scan (sc_gen_api_version)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=3.267 ms | buffers hit=3376 read=0\n  -> Index Scan (sc_gen_api_version) | cond (api_version = 'v4.0.0'::text) | rows=3404 (est 3691) loops=1 time=3.008 ms | buffers hit=3376 read=0",
+   "label": "generated_column",
+   "desc": "WHERE api_version = 'v4.0.0'",
+   "mode": "explain",
+   "first_ms": 11.094,
+   "median_ms": 3.32,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM sc_gen WHERE api_version = 'v4.0.0';",
+   "first_read": 3253,
+   "first_hit": 123,
+   "kind": "case"
+  },
+  {
+   "kind": "info",
+   "label": "Table size after: the stored value costs space in every row",
+   "sql": "SELECT pg_size_pretty(pg_table_size('sc_gen')) AS table_size,\n       pg_size_pretty(pg_relation_size('sc_gen_api_version')) AS index_size;",
+   "output": "table_size | index_size \n------------+------------\n 462 MB     | 33 MB\n(1 row)"
+  }
+ ]
+}

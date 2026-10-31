@@ -1,0 +1,69 @@
+{
+ "file": "03_n_plus_1.sql",
+ "title": "N+1 queries vs one query",
+ "category": "Anti-pattern",
+ "claim": [
+  "One query for a list, then one query per item: with 100 items that is 101 queries when 1 or 2 would do."
+ ],
+ "verdict": [
+  "Confirmed, but the cost is round trips, not the database. 1,001 queries took {t:n_plus_1} vs {t:lateral_client}",
+  "for one LATERAL query ({x:n_plus_1/lateral_client}) over a local Unix socket, where a round trip costs well",
+  "under 0.1 ms. Over a network with 1 ms latency the N+1 version would add about 1 s; an ORM talking to a remote",
+  "database pays that on every page load."
+ ],
+ "compare": [
+  "n_plus_1",
+  "lateral_client"
+ ],
+ "sections": [
+  {
+   "kind": "setup",
+   "label": "setup",
+   "ms": 2425.7502450054744,
+   "sql": "SET maintenance_work_mem = '1GB';\nCREATE INDEX sc_metric_user_date ON metric (userid, date_c);\n\n-- Typical ORM screen: the latest 1000 failed calls, and for each one the same user's previous call."
+  },
+  {
+   "label": "n_plus_1",
+   "desc": "1 query for the failed calls + 1 query per call for the previous call (1000 round trips)",
+   "mode": "script",
+   "first_ms": 63.6802329972852,
+   "median_ms": 68.29357199603692,
+   "runs": 5,
+   "sql": "SELECT format('SELECT id, date_c, url, httpcode FROM metric WHERE userid = %L AND date_c < %L '\n              'ORDER BY date_c DESC LIMIT 1', userid, date_c)\n  FROM (SELECT userid, date_c FROM metric WHERE httpcode >= 400 AND userid IS NOT NULL\n         ORDER BY date_c DESC LIMIT 1000) f \\gexec",
+   "kind": "case"
+  },
+  {
+   "label": "lateral_client",
+   "desc": "the same data in one query with a LATERAL join (1 round trip)",
+   "mode": "script",
+   "first_ms": 12.860044997069053,
+   "median_ms": 22.102169998106547,
+   "runs": 5,
+   "sql": "SELECT f.id, f.date_c, f.url, p.id AS prev_id, p.date_c AS prev_date, p.url AS prev_url, p.httpcode AS prev_code\n  FROM (SELECT id, userid, date_c, url FROM metric WHERE httpcode >= 400 AND userid IS NOT NULL\n         ORDER BY date_c DESC LIMIT 1000) f\n  LEFT JOIN LATERAL (SELECT id, date_c, url, httpcode FROM metric m\n                      WHERE m.userid = f.userid AND m.date_c < f.date_c\n                      ORDER BY m.date_c DESC LIMIT 1) p ON true;",
+   "kind": "case"
+  },
+  {
+   "ms": 10.494,
+   "planning_ms": 0.433,
+   "hit": 5604,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 1000,
+   "width": 100,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Nested Loop \u2192 Limit \u2192 Index Scan Backward (metric_date_c) \u2192 Index Scan Backward (sc_metric_user_date)",
+   "plan_text": "Nested Loop | rows=1000 (est 1000) loops=1 time=10.432 ms | buffers hit=5604 read=0\n  -> Limit | rows=1000 (est 1000) loops=1 time=5.35 ms | buffers hit=1602 read=0\n    -> Index Scan Backward (metric_date_c) | filter ((userid IS NOT NULL) AND (httpcode >= 400)) | rows=1000 (est 77038) loops=1 time=5.304 ms | removed by filter=44799 | buffers hit=1602 read=0\n  -> Limit | rows=1 (est 1) loops=1000 time=0.005 ms | buffers hit=4002 read=0\n    -> Index Scan Backward (sc_metric_user_date) | cond (((userid)::text = (metric.userid)::text) AND (date_c < metric.date_c)) | rows=1 (est 10910) loops=1000 time=0.005 ms | buffers hit=4002 read=0",
+   "label": "lateral_server",
+   "desc": "server-side execution time of the single query",
+   "mode": "explain",
+   "first_ms": 10.59,
+   "median_ms": 10.581,
+   "runs": 5,
+   "sql": "SELECT f.id, f.date_c, f.url, p.id AS prev_id, p.date_c AS prev_date, p.url AS prev_url, p.httpcode AS prev_code\n  FROM (SELECT id, userid, date_c, url FROM metric WHERE httpcode >= 400 AND userid IS NOT NULL\n         ORDER BY date_c DESC LIMIT 1000) f\n  LEFT JOIN LATERAL (SELECT id, date_c, url, httpcode FROM metric m\n                      WHERE m.userid = f.userid AND m.date_c < f.date_c\n                      ORDER BY m.date_c DESC LIMIT 1) p ON true;",
+   "first_read": 0,
+   "first_hit": 5604,
+   "kind": "case"
+  }
+ ]
+}

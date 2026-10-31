@@ -1,0 +1,89 @@
+{
+ "file": "15_planner_hints.sql",
+ "title": "Optimizer hints (MySQL) vs the PostgreSQL planner",
+ "category": "Planner (MySQL-style hints)",
+ "claim": [
+  "Force index usage or join order when the optimizer makes a bad choice; use sparingly."
+ ],
+ "verdict": [
+  "PostgreSQL has no hints, and here it did not need them. The planner's choice ({t:planner_choice}) beat the",
+  "alternatives it had rejected: bitmap scan + sort {t:no_index_scan}, full scan {t:seqscan_only}. The enable_*",
+  "switches are an experiment tool to see those alternatives, not a production fix; when the planner picks badly,",
+  "fix statistics (demo 01) or indexes first. The pg_hint_plan extension exists if hints are really needed."
+ ],
+ "compare": [
+  "seqscan_only",
+  "planner_choice"
+ ],
+ "sections": [
+  {
+   "ms": 0.813,
+   "planning_ms": 0.433,
+   "hit": 189,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 50,
+   "width": 60,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Limit \u2192 Index Scan Backward (metric_date_c)",
+   "plan_text": "Limit | rows=50 (est 50) loops=1 time=0.79 ms | buffers hit=189 read=0\n  -> Index Scan Backward (metric_date_c) | cond (date_c >= (LOCALTIMESTAMP - '30 days'::interval)) | filter ((consumerid)::text = 'consumer-010'::text) | rows=50 (est 4657) loops=1 time=0.785 ms | removed by filter=5088 | buffers hit=189 read=0",
+   "label": "planner_choice",
+   "desc": "the metrics list query, plan chosen by the planner",
+   "mode": "explain",
+   "first_ms": 1.415,
+   "median_ms": 0.863,
+   "runs": 5,
+   "sql": "SELECT id, date_c, url, duration, httpcode FROM metric\n WHERE consumerid = 'consumer-010' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC LIMIT 50;",
+   "first_read": 150,
+   "first_hit": 39,
+   "kind": "case"
+  },
+  {
+   "ms": 31.693,
+   "planning_ms": 0.386,
+   "hit": 4762,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 50,
+   "width": 60,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Limit \u2192 Sort \u2192 Bitmap Heap Scan (metric) \u2192 BitmapAnd \u2192 Bitmap Index Scan (metric_consumerid) \u2192 Bitmap Index Scan (metric_date_c)",
+   "plan_text": "Limit | rows=50 (est 50) loops=1 time=31.535 ms | buffers hit=4762 read=0\n  -> Sort | rows=50 (est 4657) loops=1 time=31.531 ms | sort=top-N heapsort 39kB Memory | buffers hit=4762 read=0\n    -> Bitmap Heap Scan (metric) | rows=4207 (est 4657) loops=1 time=30.562 ms | buffers hit=4759 read=0\n      -> BitmapAnd | rows=0 (est 4657) loops=1 time=24.65 ms | buffers hit=1175 read=0\n        -> Bitmap Index Scan (metric_consumerid) | cond ((consumerid)::text = 'consumer-010'::text) | rows=51539 (est 56895) loops=1 time=8.503 ms | buffers hit=48 read=0\n        -> Bitmap Index Scan (metric_date_c) | cond (date_c >= (LOCALTIMESTAMP - '30 days'::interval)) | rows=410835 (est 412143) loops=1 time=13.259 ms | buffers hit=1127 read=0",
+   "label": "no_index_scan",
+   "desc": "enable_indexscan = off (planner falls back to a bitmap scan on consumerid + sort)",
+   "mode": "explain",
+   "first_ms": 44.426,
+   "median_ms": 31.693,
+   "runs": 5,
+   "sql": "SET enable_indexscan = off;\n-- @explain\nSELECT id, date_c, url, duration, httpcode FROM metric\n WHERE consumerid = 'consumer-010' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC LIMIT 50;",
+   "first_read": 4674,
+   "first_hit": 88,
+   "kind": "case"
+  },
+  {
+   "ms": 234.358,
+   "planning_ms": 0.445,
+   "hit": 4133,
+   "read": 123922,
+   "io_ms": 161.607,
+   "rows": 50,
+   "width": 60,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Limit \u2192 Sort \u2192 Parallel Seq Scan (metric)",
+   "plan_text": "Limit | rows=50 (est 50) loops=1 time=219.707 ms | buffers hit=4133 read=123922\n  -> Gather Merge | rows=50 (est 3880) loops=1 time=214.618 ms | workers=2 | buffers hit=4133 read=123922\n    -> Sort | rows=41 (est 1940) loops=3 time=199.473 ms | sort=top-N heapsort 39kB Memory | buffers hit=4133 read=123922\n      -> Parallel Seq Scan (metric) | filter (((consumerid)::text = 'consumer-010'::text) AND (date_c >= (LOCALTIMESTAMP - '30 days'::interval))) | rows=1402 (est 1940) loops=3 time=199.094 ms | removed by filter=1676103 | buffers hit=4059 read=123922",
+   "label": "seqscan_only",
+   "desc": "all index access off: the plan a missing index would give",
+   "mode": "explain",
+   "first_ms": 280.806,
+   "median_ms": 242.36,
+   "runs": 5,
+   "sql": "SET enable_indexscan = off;\nSET enable_bitmapscan = off;\nSET enable_indexonlyscan = off;\n-- @explain\nSELECT id, date_c, url, duration, httpcode FROM metric\n WHERE consumerid = 'consumer-010' AND date_c >= localtimestamp - interval '30 days' ORDER BY date_c DESC LIMIT 50;",
+   "first_read": 124306,
+   "first_hit": 3749,
+   "kind": "case"
+  }
+ ]
+}

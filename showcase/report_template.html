@@ -1,0 +1,520 @@
+<meta charset="utf-8">
+<title>OBP Query Patterns</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #141820;
+  --ink-2: #4c5563;
+  --ink-3: #7c8594;
+  --rule: #dfe3ea;
+  --rule-soft: #eceff4;
+  --code-bg: #f7f8fb;
+  --before: #eb6834;
+  --after: #2a78d6;
+  --neutral-mark: #a3abb8;
+  --kw: #2a5bb8;
+  --str: #1b8a5e;
+  --num: #a2560f;
+  --com: #8a92a0;
+  --seq: #c0461a;
+  --seq-bg: #fdeee6;
+  --idx: #1f63b8;
+  --idx-bg: #e8f1fc;
+  --good: #0a7d0a;   --good-bg: #e6f4e6;
+  --warn: #8a5a00;   --warn-bg: #fdf1d6;
+  --serious: #b04a1e; --serious-bg: #fbe7de;
+  --info: #4c5563;   --info-bg: #eceff4;
+  --shadow: 0 1px 2px rgba(20, 24, 32, .06), 0 4px 16px rgba(20, 24, 32, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1216; --surface: #171b21; --ink: #eef1f5; --ink-2: #b3bac6; --ink-3: #7f8896;
+    --rule: #2a3039; --rule-soft: #20252c; --code-bg: #12161b;
+    --before: #d95926; --after: #3987e5; --neutral-mark: #69727f;
+    --kw: #7fb0f5; --str: #5fcf9c; --num: #f0a55c; --com: #6f7887;
+    --seq: #ff8a5c; --seq-bg: #3a2119; --idx: #7fb0f5; --idx-bg: #16273d;
+    --good: #5fd35f; --good-bg: #16301a; --warn: #f5c451; --warn-bg: #352a10;
+    --serious: #ff8a5c; --serious-bg: #3a2119; --info: #b3bac6; --info-bg: #232931;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1216; --surface: #171b21; --ink: #eef1f5; --ink-2: #b3bac6; --ink-3: #7f8896;
+  --rule: #2a3039; --rule-soft: #20252c; --code-bg: #12161b;
+  --before: #d95926; --after: #3987e5; --neutral-mark: #69727f;
+  --kw: #7fb0f5; --str: #5fcf9c; --num: #f0a55c; --com: #6f7887;
+  --seq: #ff8a5c; --seq-bg: #3a2119; --idx: #7fb0f5; --idx-bg: #16273d;
+  --good: #5fd35f; --good-bg: #16301a; --warn: #f5c451; --warn-bg: #352a10;
+  --serious: #ff8a5c; --serious-bg: #3a2119; --info: #b3bac6; --info-bg: #232931;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.55 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+code, pre, .mono, .num-cell { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; }
+a { color: var(--after); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--after); outline-offset: 2px; border-radius: 3px; }
+
+.shell {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px;
+  max-width: 1320px; margin: 0 auto; padding: 32px 20px 64px;
+}
+@media (min-width: 1180px) { .shell { grid-template-columns: 240px minmax(0, 1fr); } }
+
+nav.toc { display: none; }
+@media (min-width: 1180px) {
+  nav.toc {
+    display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px);
+    align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: 13px;
+  }
+}
+nav.toc h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; font-weight: 600; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+nav.toc a {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: baseline;
+  padding: 4px 6px; border-radius: 4px; color: var(--ink-2); text-decoration: none;
+}
+nav.toc a:hover { background: var(--rule-soft); color: var(--ink); }
+nav.toc .n { color: var(--ink-3); font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+nav.toc .x { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+header.top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-bottom: 28px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.12; letter-spacing: -.02em; margin: 0; font-weight: 600; text-wrap: balance; max-width: 22ch; }
+.lede { color: var(--ink-2); max-width: 72ch; margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 6px; }
+.stat { display: grid; }
+.stat b { font: 500 22px/1.2 "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--ink-3); }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; box-shadow: var(--shadow); padding: 20px; }
+.panel h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+.panel .sub { margin: 0 0 14px; color: var(--ink-3); font-size: 13px; }
+.chart-scroll { overflow-x: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+svg text { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+svg .axis { fill: var(--ink-3); font-size: 11px; }
+svg .grid { stroke: var(--rule-soft); stroke-width: 1; }
+svg .grid.major { stroke: var(--rule); }
+svg .lbl { fill: var(--ink-2); font-size: 12.5px; }
+svg a .lbl:hover { fill: var(--ink); text-decoration: underline; }
+svg .val { fill: var(--ink); font: 500 12px "IBM Plex Mono", monospace; }
+svg .val.dim { fill: var(--ink-3); font-weight: 400; }
+svg .hit { fill: transparent; cursor: default; }
+svg .row-hover { fill: var(--rule-soft); opacity: 0; }
+svg g.row:hover .row-hover { opacity: 1; }
+
+.demos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 28px; }
+main { min-width: 0; }
+article.demo { scroll-margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.demo-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.demo-head .num { font: 500 13px "IBM Plex Mono", monospace; color: var(--ink-3); }
+.demo-head h2 { font-size: 21px; margin: 0; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.chip.confirmed { color: var(--good); background: var(--good-bg); }
+.chip.partly, .chip.tradeoff { color: var(--warn); background: var(--warn-bg); }
+.chip.myth { color: var(--serious); background: var(--serious-bg); }
+.chip.different, .chip.equivalent { color: var(--info); background: var(--info-bg); }
+.speed { font: 600 13px "IBM Plex Mono", monospace; color: var(--after); font-variant-numeric: tabular-nums; }
+.article-ref { font-size: 13px; color: var(--ink-3); margin: -8px 0 0; }
+.claim { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--rule); color: var(--ink-2); max-width: 80ch; font-style: italic; }
+.claim-lbl { font-style: normal; font-weight: 600; color: var(--ink-2); }
+.verdict { margin: 0; max-width: 80ch; }
+.verdict b { font-weight: 600; }
+.verdict strong { font-weight: 600; color: var(--ink); background: var(--warn-bg); padding: 1px 3px; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+.pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 860px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.side { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; min-width: 0; }
+.side.before { border-top: 3px solid var(--before); }
+.side.after { border-top: 3px solid var(--after); }
+.side.neutral { border-top: 3px solid var(--neutral-mark); }
+.side-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+.side-head .role { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--ink-3); }
+.side-head code { font-size: 12.5px; color: var(--ink-2); }
+.side .desc { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+.big { font: 500 26px/1.1 "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.big small { font-size: 13px; color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+.metrics { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.metrics b { color: var(--ink-2); font-weight: 500; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--rule-soft); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+.preamble { font-size: 12px; color: var(--ink-3); }
+.k { color: var(--kw); font-weight: 500; } .s { color: var(--str); } .d { color: var(--num); } .c { color: var(--com); font-style: italic; }
+.pn { color: var(--ink); }
+.pn.seq { color: var(--seq); background: var(--seq-bg); border-radius: 3px; padding: 0 3px; }
+.pn.idx { color: var(--idx); background: var(--idx-bg); border-radius: 3px; padding: 0 3px; }
+.pr { color: var(--ink-3); }
+
+.strip { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px 4px; }
+.strip .cap { font-size: 12px; color: var(--ink-3); margin: 0 0 2px; }
+.infos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.infos h3, details h3 { font-size: 13px; font-weight: 600; margin: 0 0 6px; color: var(--ink-2); }
+details.more { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-size: 13.5px; color: var(--ink-2); font-weight: 500; }
+details.more > .body { padding: 0 14px 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+th { color: var(--ink-3); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+td.num-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.num-cell { text-align: right; }
+details.case > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); padding: 2px 0; }
+details.case > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+
+.tip {
+  position: absolute; pointer-events: none; z-index: 10; max-width: 300px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .18); padding: 8px 10px; font-size: 12.5px; line-height: 1.45;
+}
+.tip b { font-weight: 600; }
+.tip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+.tip .row span:first-child { color: var(--ink-3); }
+.env-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; margin-top: 6px; }
+.env-grid h3, .env-block h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 0 0 6px; }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
+dl.kv dt { color: var(--ink-3); }
+dl.kv dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.env-block { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.src { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--info-bg); color: var(--info); white-space: nowrap; }
+.src.changed { background: var(--warn-bg); color: var(--warn); }
+.env-note { font-size: 13px; color: var(--ink-3); margin: 4px 0 0; max-width: 80ch; }
+.mem { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 20px; }
+@media (min-width: 980px) { .mem { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+.mem-card { border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
+.mem-card h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 0; }
+.facts { display: grid; gap: 10px; }
+.fact { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.fact .fk { font-size: 12px; color: var(--ink-3); }
+.fact .fv { font: 500 14px "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.fact .fe { font-size: 12.5px; color: var(--ink-2); }
+dl.guide { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 0; font-size: 13px; }
+dl.guide dt { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink); }
+dl.guide dd { margin: 0; color: var(--ink-2); }
+footer { margin-top: 40px; color: var(--ink-3); font-size: 13px; max-width: 80ch; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Demos"><h2>Demos</h2><ol id="toc"></ol></nav>
+  <main>
+    <header class="top">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1>Query optimization patterns, measured on OBP metric data</h1>
+      <p class="lede" id="lede"></p>
+      <div class="stats" id="stats"></div>
+    </header>
+    <section class="panel" aria-labelledby="sum-h">
+      <h2 id="sum-h">Before → after, every demo</h2>
+      <p class="sub">Median execution time on a log scale: each gridline is 10× slower than the one to its left. Hover a row for details, click a name to jump to it.</p>
+      <div class="legend"><span><i style="background:var(--before)"></i>Before (the anti-pattern)</span><span><i style="background:var(--after)"></i>After (the fix)</span></div>
+      <div class="chart-scroll"><svg id="summary" role="img" aria-label="Before and after execution time per demo"></svg></div>
+    </section>
+    <section class="panel" aria-labelledby="env-h" id="environment" style="margin-top:28px" hidden>
+      <h2 id="env-h">Test environment</h2>
+      <p class="sub" id="env-sub"></p>
+      <div class="env-grid" id="env-grid"></div>
+      <div class="mem" id="env-mem"></div>
+      <div class="env-block"><h3>Dataset</h3><div class="table-wrap" id="env-tables"></div><p class="env-note">Rows are generated from the real <code>obp_mapped</code> rows (same mix of consumers, URLs, API functions, verbs and HTTP codes) with new correlation ids, varied durations and dates spread evenly over the period.</p></div>
+      <div class="env-block"><h3>PostgreSQL settings</h3><div class="table-wrap" id="env-settings"></div></div>
+      <div class="env-block"><h3>Reproduce</h3><pre id="env-repro"></pre></div>
+    </section>
+    <div class="demos" id="demos"></div>
+    <footer id="footer"></footer>
+  </main>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+  const R = JSON.parse(document.getElementById("data").textContent);
+  const demos = R.demos;
+  const NS = "http://www.w3.org/2000/svg";
+  const TAGS = {
+    confirmed: ["✓", "Confirmed"], partly: ["◐", "Partly confirmed"], myth: ["✗", "Myth for PostgreSQL"],
+    different: ["≠", "Different in PostgreSQL"], tradeoff: ["⇄", "Trade-off"], equivalent: ["≈", "Equivalent exists"]
+  };
+
+  const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const fmt = ms => ms == null ? "–" : ms >= 1000 ? (ms / 1000).toFixed(2) + " s" : ms >= 10 ? Math.round(ms) + " ms"
+    : ms >= 1 ? ms.toFixed(1) + " ms" : ms.toFixed(2) + " ms";
+  const fmtX = x => x == null ? "" : x >= 10 ? Math.round(x).toLocaleString("en-US") + "×" : x.toFixed(1) + "×";
+  const n = v => v == null ? "–" : Number(v).toLocaleString("en-US");
+  const mb = pages => pages * 8 / 1024;
+  const pagesTxt = p => n(p) + (mb(p) >= 1 ? ` (${Math.round(mb(p)).toLocaleString("en-US")} MB)` : "");
+  const el = (tag, attrs = {}, parent) => {
+    const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  };
+
+  // --- SQL / plan highlighting -------------------------------------------------------------
+  const KW = /^(select|from|where|and|or|not|in|is|null|as|on|join|left|lateral|cross|order|by|group|limit|offset|desc|asc|union|all|with|insert|into|delete|update|set|returning|create|index|drop|if|exists|using|include|materialized|view|refresh|concurrently|analyze|vacuum|begin|rollback|explain|count|avg|sum|min|max|distinct|filter|between|case|when|then|else|end|true|false|interval|like|ilike|table|alter|add|column|generated|always|stored|unique|extension|values|coalesce|format|row_number|over|partition|gin|brin|hash)$/i;
+  function sql(src) {
+    const re = /(--[^\n]*)|('(?:[^']|'')*')|(\b\d+(?:\.\d+)?\b)|([A-Za-z_][A-Za-z_0-9]*)/g;
+    let out = "", last = 0, m;
+    while ((m = re.exec(src))) {
+      out += esc(src.slice(last, m.index));
+      if (m[1]) out += `<span class="c">${esc(m[1])}</span>`;
+      else if (m[2]) out += `<span class="s">${esc(m[2])}</span>`;
+      else if (m[3]) out += `<span class="d">${m[3]}</span>`;
+      else out += KW.test(m[4]) ? `<span class="k">${m[4]}</span>` : esc(m[4]);
+      last = re.lastIndex;
+    }
+    return out + esc(src.slice(last));
+  }
+  function plan(src) {
+    return src.split("\n").map(line => {
+      const m = line.match(/^(\s*)(-> )?(.*)$/);
+      const body = m[3];
+      if (/^rows /.test(body.trim())) return `${m[1]}<span class="pr">${esc(body)}</span>`;
+      const cls = /Seq Scan/.test(body) ? "pn seq" : /Index( Only)? Scan|Bitmap Index Scan/.test(body) ? "pn idx" : "pn";
+      return `${m[1]}${m[2] ? '<span class="pr">→ </span>' : ""}<span class="${cls}">${esc(body)}</span>`;
+    }).join("\n");
+  }
+
+  // --- tooltip ---------------------------------------------------------------------------------
+  const tip = document.getElementById("tip");
+  function showTip(evt, html) {
+    tip.innerHTML = html; tip.hidden = false;
+    const pad = 14, w = tip.offsetWidth, h = tip.offsetHeight;
+    let x = evt.pageX + pad, y = evt.pageY + pad;
+    if (x + w > window.scrollX + document.documentElement.clientWidth - 8) x = evt.pageX - w - pad;
+    if (y + h > window.scrollY + window.innerHeight - 8) y = evt.pageY - h - pad;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  const hideTip = () => { tip.hidden = true; };
+  const tipRows = rows => rows.map(([k, v]) => `<div class="row"><span>${k}</span><span>${v}</span></div>`).join("");
+  function caseTip(c, role) {
+    const rows = [["time (median)", fmt(c.median_ms) + (c.mode === "script" ? " client" : "")], ["first run", fmt(c.first_ms)]];
+    if (c.mode !== "script") rows.push(["pages hit / read", `${n(c.hit)} / ${n(c.read)}`], ["rows", n(c.rows)]);
+    return `<b>${esc(role ? role + ": " : "")}${esc(c.label)}</b><div style="color:var(--ink-3);margin:2px 0 6px">${esc(c.desc)}</div>${tipRows(rows)}`
+      + (c.plan ? `<div style="margin-top:6px;color:var(--ink-2)">${esc(c.plan)}</div>` : "");
+  }
+
+  // --- log scale -------------------------------------------------------------------------------
+  function logScale(minMs, maxMs, x0, x1) {
+    const lo = Math.floor(Math.log10(minMs)), hi = Math.max(Math.ceil(Math.log10(maxMs)), lo + 2);
+    const f = ms => x0 + (Math.log10(Math.max(ms, 10 ** lo)) - lo) / (hi - lo) * (x1 - x0);
+    const ticks = []; for (let e = lo; e <= hi; e++) ticks.push(10 ** e);
+    return { f, ticks };
+  }
+  const tickLabel = ms => ms >= 1000 ? (ms / 1000) + " s" : ms >= 1 ? ms + " ms" : ms.toFixed(-Math.floor(Math.log10(ms))) + " ms";
+
+  // --- summary dumbbell ------------------------------------------------------------------------
+  function summary() {
+    const rows = demos.filter(d => d.pair && d.speedup);
+    const W = 980, L = 300, Rt = 96, top = 34, rh = 30, H = top + rows.length * rh + 10;
+    const svg = document.getElementById("summary");
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.setAttribute("width", W); svg.style.maxWidth = "100%"; svg.style.height = "auto";
+    svg.style.minWidth = "640px";
+    const all = rows.flatMap(d => [d.pair[0].median_ms, d.pair[1].median_ms]);
+    const { f, ticks } = logScale(Math.min(...all), Math.max(...all), L, W - Rt);
+    ticks.forEach(t => {
+      el("line", { x1: f(t), x2: f(t), y1: top - 6, y2: H - 6, class: "grid major" }, svg);
+      el("text", { x: f(t), y: top - 14, "text-anchor": "middle", class: "axis" }, svg).textContent = tickLabel(t);
+    });
+    el("text", { x: W - 4, y: top - 14, "text-anchor": "end", class: "axis" }, svg).textContent = "speedup";
+    rows.forEach((d, i) => {
+      const y = top + i * rh + rh / 2;
+      const g = el("g", { class: "row" }, svg);
+      el("rect", { x: 0, y: y - rh / 2, width: W, height: rh, rx: 4, class: "row-hover" }, g);
+      const a = el("a", { href: "#d" + d.num }, g);
+      const t = el("text", { x: 0, y: y + 4, class: "lbl" }, a);
+      t.textContent = d.num + "  " + (d.short.length > 40 ? d.short.slice(0, 39) + "…" : d.short);
+      const xb = f(d.pair[0].median_ms), xa = f(d.pair[1].median_ms);
+      el("line", { x1: xb, x2: xa, y1: y, y2: y, stroke: "var(--neutral-mark)", "stroke-width": 2 }, g);
+      el("circle", { cx: xb, cy: y, r: 6, fill: "var(--before)", stroke: "var(--surface)", "stroke-width": 2 }, g);
+      el("circle", { cx: xa, cy: y, r: 6, fill: "var(--after)", stroke: "var(--surface)", "stroke-width": 2 }, g);
+      el("text", { x: W - 4, y: y + 4, "text-anchor": "end", class: "val" }, g).textContent = fmtX(d.speedup);
+      const hit = el("rect", { x: L - 10, y: y - rh / 2, width: W - L - Rt + 20, height: rh, class: "hit" }, g);
+      const html = `<b>${esc(d.num + " " + d.title)}</b>` + tipRows([
+        ["before · " + esc(d.pair[0].label), fmt(d.pair[0].median_ms)],
+        ["after · " + esc(d.pair[1].label), fmt(d.pair[1].median_ms)],
+        ["speedup", fmtX(d.speedup)]]);
+      hit.addEventListener("mousemove", e => showTip(e, html));
+      hit.addEventListener("mouseleave", hideTip);
+    });
+  }
+
+  // --- per-demo case strip ---------------------------------------------------------------------
+  function strip(d) {
+    const cs = d.cases; if (cs.length < 2) return null;
+    const W = 900, L = 250, Rt = 20, top = 8, rh = 24, H = top + cs.length * rh + 26;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Median time per case, log scale" });
+    svg.style.width = "100%"; svg.style.height = "auto"; svg.style.minWidth = "560px";
+    const { f, ticks } = logScale(Math.min(...cs.map(c => c.median_ms || 0.001)), Math.max(...cs.map(c => c.median_ms)), L, W - Rt - 70);
+    ticks.forEach(t => {
+      el("line", { x1: f(t), x2: f(t), y1: top, y2: H - 22, class: "grid major" }, svg);
+      el("text", { x: f(t), y: H - 6, "text-anchor": "middle", class: "axis" }, svg).textContent = tickLabel(t);
+    });
+    const [pa, pb] = d.pair ? [d.pair[0].label, d.pair[1].label] : [null, null];
+    cs.forEach((c, i) => {
+      const y = top + i * rh + rh / 2;
+      const role = c.label === pa ? "before" : c.label === pb ? "after" : null;
+      const color = d.neutralPair ? "var(--neutral-mark)" : role === "before" ? "var(--before)" : role === "after" ? "var(--after)" : "var(--neutral-mark)";
+      const g = el("g", { class: "row" }, svg);
+      el("rect", { x: 0, y: y - rh / 2, width: W, height: rh, rx: 4, class: "row-hover" }, g);
+      el("text", { x: 0, y: y + 4, class: "lbl", "font-family": "IBM Plex Mono, monospace", "font-size": "12" }, g).textContent = c.label;
+      const x = f(c.median_ms || 0.001);
+      el("line", { x1: L, x2: x, y1: y, y2: y, stroke: "var(--rule)", "stroke-width": 1 }, g);
+      const client = c.mode === "script";
+      el("circle", { cx: x, cy: y, r: 5.5, fill: client ? "var(--surface)" : color, stroke: client ? color : "var(--surface)", "stroke-width": 2 }, g);
+      el("text", { x: x + 10, y: y + 4, class: role ? "val" : "val dim" }, g).textContent = fmt(c.median_ms) + (client ? " client" : "");
+      const hit = el("rect", { x: 0, y: y - rh / 2, width: W, height: rh, class: "hit" }, g);
+      hit.addEventListener("mousemove", e => showTip(e, caseTip(c, role)));
+      hit.addEventListener("mouseleave", hideTip);
+    });
+    return svg;
+  }
+
+  // --- demo sections ---------------------------------------------------------------------------
+  function sideCard(c, role, headLabel, speedup) {
+    const client = c.mode === "script";
+    let h = `<div class="side ${role}"><div class="side-head"><span class="role">${headLabel}</span><code>${esc(c.label)}</code></div>`;
+    h += `<p class="desc">${esc(c.desc)}</p>`;
+    h += `<div class="big">${fmt(c.median_ms)}${client ? "<small>client, incl. transfer</small>" : ""}`
+       + (speedup ? `<small class="speed" style="color:var(--after)">${fmtX(speedup)} faster</small>` : "") + `</div>`;
+    h += `<div class="metrics"><span>first run <b>${fmt(c.first_ms)}</b></span>`;
+    if (!client) h += `<span>pages hit <b>${n(c.hit)}</b> / read <b>${pagesTxt(c.read)}</b></span><span>rows <b>${n(c.rows)}</b></span>`;
+    h += `</div>`;
+    if (c.has_preamble) h += `<div class="preamble">Measured after a session preamble (full script under "All cases").</div>`;
+    h += `<pre><code>${sql(c.sql_query)}</code></pre>`;
+    if (!client) h += `<pre>${plan(c.plan_compact)}</pre>`;
+    return h + "</div>";
+  }
+
+  function section(d) {
+    const art = document.createElement("article");
+    art.className = "demo"; art.id = "d" + d.num;
+    const [icon, tagTxt] = TAGS[d.tag] || ["", ""];
+    let h = `<div class="demo-head"><span class="num">${d.num}</span><h2>${esc(d.title)}</h2>`
+      + (tagTxt ? `<span class="chip ${d.tag}"><span aria-hidden="true">${icon}</span>${tagTxt}</span>` : "")
+      + (d.speedup ? `<span class="speed">${fmtX(d.speedup)}</span>` : "") + `</div>`;
+    if (d.category) h += `<p class="article-ref">${esc(d.category)}</p>`;
+    if (d.claim) h += `<p class="claim"><span class="claim-lbl">Common advice:</span> ${esc(d.claim)}</p>`;
+    if (d.verdict) h += `<p class="verdict"><b>Verdict.</b> ${esc(d.verdict).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")}</p>`;
+    art.innerHTML = h;
+
+    const sv = strip(d);
+    if (sv) {
+      const box = document.createElement("div"); box.className = "strip";
+      box.innerHTML = `<p class="cap">All cases, median time (log scale)${d.cases.some(c => c.mode === "script") ? " · hollow = measured client side" : ""}</p>`;
+      const sc = document.createElement("div"); sc.className = "chart-scroll"; sc.appendChild(sv); box.appendChild(sc);
+      art.appendChild(box);
+    }
+    if (d.pair) {
+      const p = document.createElement("div"); p.className = "pair";
+      p.innerHTML = d.neutralPair
+        ? sideCard(d.pair[0], "neutral", "A") + sideCard(d.pair[1], "neutral", "B")
+        : sideCard(d.pair[0], "before", "Before") + sideCard(d.pair[1], "after", "After", d.speedup);
+      art.appendChild(p);
+    }
+    if (d.infos.length) {
+      const inf = document.createElement("div"); inf.className = "infos";
+      inf.innerHTML = d.infos.map(i => `<div><h3>${esc(i.label)}</h3><pre>${esc(i.output)}</pre></div>`).join("");
+      art.appendChild(inf);
+    }
+    if (d.cases.length || d.steps.length) {
+      const det = document.createElement("details"); det.className = "more";
+      let b = `<summary>All cases, setup steps and full plans</summary><div class="body">`;
+      if (d.cases.length) {
+        b += `<div class="table-wrap"><table><thead><tr><th>Case</th><th>What</th><th class="num-cell">Time</th><th class="num-cell">First run</th><th class="num-cell">Pages hit / read</th><th class="num-cell">Rows</th><th>Plan</th></tr></thead><tbody>`
+          + d.cases.map(c => `<tr><td><code>${esc(c.label)}</code></td><td>${esc(c.desc)}</td><td class="num-cell">${fmt(c.median_ms)}${c.mode === "script" ? " <i>client</i>" : ""}</td><td class="num-cell">${fmt(c.first_ms)}</td>`
+            + `<td class="num-cell">${c.mode === "script" ? "–" : n(c.hit) + " / " + n(c.read)}</td><td class="num-cell">${c.mode === "script" ? "–" : n(c.rows)}</td><td>${esc(c.plan || "–")}</td></tr>`).join("")
+          + `</tbody></table></div>`;
+      }
+      if (d.steps.length) b += `<div><h3>Setup and steps</h3>` + d.steps.map(s => `<details class="case"><summary>${esc(s.kind)}: ${esc(s.label)} · ${fmt(s.ms)}</summary><div><pre><code>${sql(s.sql)}</code></pre></div></details>`).join("") + `</div>`;
+      if (d.cases.length) b += `<div><h3>Cases</h3>` + d.cases.map(c => `<details class="case"><summary><code>${esc(c.label)}</code>: SQL${c.plan_text ? " and full plan" : ""}</summary><div><pre><code>${sql(c.sql_full)}</code></pre>`
+        + (c.plan_text ? `<pre>${esc(c.plan_text)}\nPlanning ${fmt(c.planning_ms)}, execution ${fmt(c.median_ms)} (median)${c.io_ms ? ", I/O read " + fmt(c.io_ms) : ""}</pre>` : "") + `</div></details>`).join("") + `</div>`;
+      det.innerHTML = b + `</div>`;
+      art.appendChild(det);
+    }
+    return art;
+  }
+
+  // --- memory: sizes chart + facts + BUFFERS guide ---------------------------------------------
+  function memory(e) {
+    const m = e.memory; if (!m) return;
+    const human = b => b >= 1024 ** 3 ? (b / 1024 ** 3).toFixed(1) + " GB" : b >= 1024 ** 2 ? Math.round(b / 1024 ** 2) + " MB" : Math.round(b / 1024) + " kB";
+    const W = 560, L = 250, Rt = 64, rh = 26, top = 4, H = top + m.sizes.length * rh + 24;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Memory and data sizes in GB" });
+    svg.style.width = "100%"; svg.style.height = "auto"; svg.style.minWidth = "420px";
+    const max = Math.max(...m.sizes.map(x => x.bytes)), gb = 1024 ** 3;
+    const step = max / gb > 12 ? 4 : 2, maxT = Math.ceil(max / gb / step) * step;
+    const x = b => L + b / (maxT * gb) * (W - L - Rt);
+    for (let t = 0; t <= maxT; t += step) {
+      el("line", { x1: x(t * gb), x2: x(t * gb), y1: top, y2: H - 20, class: t ? "grid" : "grid major" }, svg);
+      el("text", { x: x(t * gb), y: H - 5, "text-anchor": "middle", class: "axis" }, svg).textContent = t + " GB";
+    }
+    m.sizes.forEach((s, i) => {
+      const y = top + i * rh, bw = Math.max(x(s.bytes) - L, 2);
+      const g = el("g", { class: "row" }, svg);
+      el("rect", { x: 0, y, width: W, height: rh, rx: 4, class: "row-hover" }, g);
+      el("text", { x: 0, y: y + rh / 2 + 4, class: "lbl" }, g).textContent = s.label;
+      el("rect", { x: L, y: y + 6, width: bw, height: rh - 12, rx: 3, fill: s.kind === "memory" ? "var(--after)" : "var(--neutral-mark)" }, g);
+      el("text", { x: L + bw + 6, y: y + rh / 2 + 4, class: "val" }, g).textContent = human(s.bytes);
+    });
+    const chart = `<div class="mem-card"><h3>Memory vs data size</h3><div class="legend"><span><i style="background:var(--after)"></i>memory / cache</span><span><i style="background:var(--neutral-mark)"></i>data (tables + indexes)</span></div><div class="chart-scroll" id="mem-chart"></div>`
+      + `<p class="env-note">shared_buffers holds ${(m.shared_buffers / m.db_bytes * 100).toFixed(1)}% of the data. Everything else comes from the OS page cache (RAM the kernel uses for files) or from the SSD: that is the difference between <i>hit</i> and <i>read</i> in every plan below.</p></div>`;
+    const facts = `<div class="mem-card"><h3>Memory settings and cache behaviour</h3><div class="facts">`
+      + (e.memory_facts || []).map(([k, v, x]) => `<div class="fact"><span class="fk">${esc(k)}</span><span class="fv">${esc(v)}</span><span class="fe">${esc(x)}</span></div>`).join("") + `</div></div>`;
+    const guide = `<div class="mem-card" style="grid-column:1/-1"><h3>Reading BUFFERS in the plans (1 page = 8 kB)</h3><dl class="guide">`
+      + (e.buffers_guide || []).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("") + `</dl></div>`;
+    const box = document.getElementById("env-mem");
+    box.innerHTML = chart + facts + guide;
+    document.getElementById("mem-chart").appendChild(svg);
+  }
+
+  // --- environment -----------------------------------------------------------------------------
+  function environment() {
+    const e = R.env; if (!e) return;
+    document.getElementById("environment").hidden = false;
+    document.getElementById("env-sub").textContent = `Collected ${e.collected}, automatically at the end of each run, so the cache statistics include it.`;
+    const kv = (title, obj) => `<div><h3>${title}</h3><dl class="kv">${Object.entries(obj).map(([k, v]) => `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("")}</dl></div>`;
+    document.getElementById("env-grid").innerHTML = kv("Machine", e.machine) + kv("PostgreSQL", e.postgres) + kv("Method", e.method);
+    memory(e);
+    document.getElementById("env-tables").innerHTML = `<table><thead><tr><th>Table</th><th class="num-cell">Rows</th><th class="num-cell">Data</th><th class="num-cell">Indexes</th><th>Dates</th></tr></thead><tbody>`
+      + e.tables.map(t => `<tr><td><code>${esc(t.table)}</code></td><td class="num-cell">${n(t.rows)}</td><td class="num-cell">${esc(t.data)}</td><td class="num-cell">${esc(t.indexes)} (${t.index_count})</td><td class="mono">${esc(t.from)} → ${esc(t.to)}</td></tr>`).join("")
+      + `</tbody></table>`;
+    document.getElementById("env-settings").innerHTML = `<table><thead><tr><th>Setting</th><th>Value</th><th>Source</th><th>Why it matters here</th></tr></thead><tbody>`
+      + e.settings.map(x => `<tr><td><code>${esc(x.name)}</code></td><td class="mono">${esc(x.value)}</td><td><span class="src${x.source === "default" ? "" : " changed"}">${esc(x.source === "default" ? "default" : "changed: " + x.source)}</span></td><td>${esc(x.why || "")}</td></tr>`).join("")
+      + `</tbody></table>`;
+    document.getElementById("env-repro").innerHTML = (R.reproduce || []).map(l => {
+      const i = l.indexOf("#");
+      return i < 0 ? esc(l) : esc(l.slice(0, i)) + `<span class="c">${esc(l.slice(i))}</span>`;
+    }).join("\n");
+  }
+
+  // --- header, toc -----------------------------------------------------------------------------
+  document.getElementById("eyebrow").textContent = R.meta.eyebrow;
+  document.getElementById("lede").innerHTML = R.meta.lede;
+  const counts = demos.reduce((a, d) => (a[d.tag] = (a[d.tag] || 0) + 1, a), {});
+  const best = demos.filter(d => d.speedup).sort((a, b) => b.speedup - a.speedup)[0];
+  document.getElementById("stats").innerHTML = [
+    [demos.length, "demos"], [counts.confirmed || 0, "confirmed"],
+    [(counts.partly || 0) + (counts.tradeoff || 0), "partly / trade-off"],
+    [(counts.myth || 0) + (counts.different || 0), "myth or different in PostgreSQL"],
+    [best ? fmtX(best.speedup) : "–", "largest speedup (" + (best ? best.num : "") + ")"]
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+  document.getElementById("toc").innerHTML = (R.env ? `<li><a href="#environment"><span class="n">⚙</span><span>Test environment</span><span class="x"></span></a></li>` : "") + demos.map(d => `<li><a href="#d${d.num}"><span class="n">${d.num}</span><span>${esc(d.short)}</span><span class="x">${d.speedup ? fmtX(d.speedup) : ""}</span></a></li>`).join("");
+  document.getElementById("footer").innerHTML = R.meta.footer;
+
+  summary();
+  environment();
+  const box = document.getElementById("demos");
+  demos.forEach(d => box.appendChild(section(d)));
+})();
+</script>

@@ -1,0 +1,101 @@
+{
+ "file": "08_partial_index.sql",
+ "title": "Partial index for a filtered subset",
+ "category": "Indexing",
+ "claim": [
+  "Index only the rows you query: smaller, fits in memory better, faster, and does not slow down writes of other rows."
+ ],
+ "verdict": [
+  "Confirmed. The partial index on error rows is 8.9 MB vs 151 MB for the full (httpcode, date_c) index, 17x",
+  "smaller, and at least as fast ({t:partial_index} vs {t:full_index}; {t:no_index} without either). The consumer",
+  "index without NULLs is 13 MB vs 34 MB. Small indexes stay in the 128 MB cache and cost nothing when rows outside",
+  "the predicate are written."
+ ],
+ "compare": [
+  "no_index",
+  "partial_index"
+ ],
+ "sections": [
+  {
+   "kind": "setup",
+   "label": "setup",
+   "ms": 3483.1061639997642,
+   "sql": "SET maintenance_work_mem = '1GB';\nCREATE INDEX sc_metric_http_date ON metric (httpcode, date_c);\nCREATE INDEX sc_metric_errors_date ON metric (date_c) WHERE httpcode >= 400;\nCREATE INDEX sc_metric_consumer_notnull ON metric (consumerid) WHERE consumerid IS NOT NULL;\nVACUUM ANALYZE metric;"
+  },
+  {
+   "kind": "info",
+   "label": "Sizes: 8% of calls are errors, 61% have no consumer id",
+   "sql": "SELECT indexrelname AS index, pg_size_pretty(pg_relation_size(indexrelid)) AS size,\n       CASE indexrelname WHEN 'sc_metric_http_date' THEN 'full (httpcode, date_c)'\n                         WHEN 'sc_metric_errors_date' THEN 'partial: WHERE httpcode >= 400'\n                         WHEN 'metric_consumerid' THEN 'full, includes NULLs'\n                         ELSE 'partial: WHERE consumerid IS NOT NULL' END AS kind\n  FROM pg_stat_user_indexes\n WHERE indexrelname IN ('sc_metric_http_date', 'sc_metric_errors_date', 'metric_consumerid', 'sc_metric_consumer_notnull')\n ORDER BY indexrelname;",
+   "output": "index            |  size   |                 kind                  \n----------------------------+---------+---------------------------------------\n metric_consumerid          | 34 MB   | full, includes NULLs\n sc_metric_consumer_notnull | 13 MB   | partial: WHERE consumerid IS NOT NULL\n sc_metric_errors_date      | 8880 kB | partial: WHERE httpcode >= 400\n sc_metric_http_date        | 151 MB  | full (httpcode, date_c)\n(4 rows)"
+  },
+  {
+   "ms": 29.334,
+   "planning_ms": 0.31,
+   "hit": 14244,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 31,
+   "width": 16,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Sort \u2192 Parallel Index Scan (metric_date_c)",
+   "plan_text": "Aggregate | rows=31 (est 34673) loops=1 time=29.245 ms | buffers hit=14244 read=0\n  -> Gather Merge | rows=91 (est 28896) loops=1 time=29.233 ms | workers=2 | buffers hit=14244 read=0\n    -> Aggregate | rows=30 (est 14448) loops=3 time=23.787 ms | buffers hit=14244 read=0\n      -> Sort | rows=11008 (est 14448) loops=3 time=23.265 ms | sort=quicksort 926kB Memory | buffers hit=14244 read=0\n        -> Parallel Index Scan (metric_date_c) | cond (date_c >= (LOCALTIMESTAMP - '30 days'::interval)) | filter (httpcode >= 400) | rows=11008 (est 14448) loops=3 time=21.948 ms | removed by filter=125942 | buffers hit=14230 read=0",
+   "label": "no_index",
+   "desc": "errors per day, last 30 days, without either error index",
+   "mode": "explain",
+   "first_ms": 30.391,
+   "median_ms": 29.279,
+   "runs": 5,
+   "sql": "DROP INDEX sc_metric_http_date;\nDROP INDEX sc_metric_errors_date;\n-- @explain\nSELECT date_trunc('day', date_c) AS day, count(*) FROM metric\n WHERE httpcode >= 400 AND date_c >= localtimestamp - interval '30 days' GROUP BY 1 ORDER BY 1;",
+   "first_read": 2980,
+   "first_hit": 11278,
+   "kind": "case"
+  },
+  {
+   "ms": 14.813,
+   "planning_ms": 0.338,
+   "hit": 1350,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 31,
+   "width": 16,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Sort \u2192 Index Only Scan (sc_metric_http_date)",
+   "plan_text": "Aggregate | rows=31 (est 34673) loops=1 time=14.708 ms | buffers hit=1350 read=0\n  -> Sort | rows=33023 (est 34674) loops=1 time=13.173 ms | sort=quicksort 2914kB Memory | buffers hit=1350 read=0\n    -> Index Only Scan (sc_metric_http_date) | cond ((httpcode >= 400) AND (date_c >= (LOCALTIMESTAMP - '30 days'::interval))) | rows=33023 (est 34674) loops=1 time=9.356 ms | heap fetches=0 | buffers hit=1347 read=0",
+   "label": "full_index",
+   "desc": "same with the full (httpcode, date_c) index",
+   "mode": "explain",
+   "first_ms": 18.559,
+   "median_ms": 14.813,
+   "runs": 5,
+   "sql": "DROP INDEX sc_metric_errors_date;\n-- @explain\nSELECT date_trunc('day', date_c) AS day, count(*) FROM metric\n WHERE httpcode >= 400 AND date_c >= localtimestamp - interval '30 days' GROUP BY 1 ORDER BY 1;",
+   "first_read": 1346,
+   "first_hit": 4,
+   "kind": "case"
+  },
+  {
+   "ms": 9.099,
+   "planning_ms": 0.33,
+   "hit": 97,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 31,
+   "width": 16,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Sort \u2192 Index Only Scan (sc_metric_errors_date)",
+   "plan_text": "Aggregate | rows=31 (est 34673) loops=1 time=8.995 ms | buffers hit=97 read=0\n  -> Sort | rows=33023 (est 34674) loops=1 time=7.181 ms | sort=quicksort 2914kB Memory | buffers hit=97 read=0\n    -> Index Only Scan (sc_metric_errors_date) | cond (date_c >= (LOCALTIMESTAMP - '30 days'::interval)) | rows=33023 (est 34674) loops=1 time=3.787 ms | heap fetches=0 | buffers hit=94 read=0",
+   "label": "partial_index",
+   "desc": "same with the partial index (only error rows)",
+   "mode": "explain",
+   "first_ms": 9.092,
+   "median_ms": 9.092,
+   "runs": 5,
+   "sql": "DROP INDEX sc_metric_http_date;\n-- @explain\nSELECT date_trunc('day', date_c) AS day, count(*) FROM metric\n WHERE httpcode >= 400 AND date_c >= localtimestamp - interval '30 days' GROUP BY 1 ORDER BY 1;",
+   "first_read": 93,
+   "first_hit": 4,
+   "kind": "case"
+  }
+ ]
+}

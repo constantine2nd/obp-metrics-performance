@@ -1,0 +1,521 @@
+<meta charset="utf-8">
+<title>OBP Metric Load Test</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #141820;
+  --ink-2: #4c5563;
+  --ink-3: #7c8594;
+  --rule: #dfe3ea;
+  --rule-soft: #eceff4;
+  --code-bg: #f7f8fb;
+  --before: #eb6834;
+  --after: #2a78d6;
+  --neutral-mark: #a3abb8;
+  --kw: #2a5bb8;
+  --str: #1b8a5e;
+  --num: #a2560f;
+  --com: #8a92a0;
+  --seq: #c0461a;
+  --seq-bg: #fdeee6;
+  --idx: #1f63b8;
+  --idx-bg: #e8f1fc;
+  --good: #0a7d0a;   --good-bg: #e6f4e6;
+  --warn: #8a5a00;   --warn-bg: #fdf1d6;
+  --serious: #b04a1e; --serious-bg: #fbe7de;
+  --info: #4c5563;   --info-bg: #eceff4;
+  --shadow: 0 1px 2px rgba(20, 24, 32, .06), 0 4px 16px rgba(20, 24, 32, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1216; --surface: #171b21; --ink: #eef1f5; --ink-2: #b3bac6; --ink-3: #7f8896;
+    --rule: #2a3039; --rule-soft: #20252c; --code-bg: #12161b;
+    --before: #d95926; --after: #3987e5; --neutral-mark: #69727f;
+    --kw: #7fb0f5; --str: #5fcf9c; --num: #f0a55c; --com: #6f7887;
+    --seq: #ff8a5c; --seq-bg: #3a2119; --idx: #7fb0f5; --idx-bg: #16273d;
+    --good: #5fd35f; --good-bg: #16301a; --warn: #f5c451; --warn-bg: #352a10;
+    --serious: #ff8a5c; --serious-bg: #3a2119; --info: #b3bac6; --info-bg: #232931;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1216; --surface: #171b21; --ink: #eef1f5; --ink-2: #b3bac6; --ink-3: #7f8896;
+  --rule: #2a3039; --rule-soft: #20252c; --code-bg: #12161b;
+  --before: #d95926; --after: #3987e5; --neutral-mark: #69727f;
+  --kw: #7fb0f5; --str: #5fcf9c; --num: #f0a55c; --com: #6f7887;
+  --seq: #ff8a5c; --seq-bg: #3a2119; --idx: #7fb0f5; --idx-bg: #16273d;
+  --good: #5fd35f; --good-bg: #16301a; --warn: #f5c451; --warn-bg: #352a10;
+  --serious: #ff8a5c; --serious-bg: #3a2119; --info: #b3bac6; --info-bg: #232931;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.55 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+code, pre, .mono, .num-cell { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; }
+a { color: var(--after); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--after); outline-offset: 2px; border-radius: 3px; }
+
+.shell {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px;
+  max-width: 1320px; margin: 0 auto; padding: 32px 20px 64px;
+}
+@media (min-width: 1180px) { .shell { grid-template-columns: 240px minmax(0, 1fr); } }
+
+nav.toc { display: none; }
+@media (min-width: 1180px) {
+  nav.toc {
+    display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px);
+    align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: 13px;
+  }
+}
+nav.toc h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; font-weight: 600; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+nav.toc a {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: baseline;
+  padding: 4px 6px; border-radius: 4px; color: var(--ink-2); text-decoration: none;
+}
+nav.toc a:hover { background: var(--rule-soft); color: var(--ink); }
+nav.toc .n { color: var(--ink-3); font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+nav.toc .x { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+header.top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-bottom: 28px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.12; letter-spacing: -.02em; margin: 0; font-weight: 600; text-wrap: balance; max-width: 22ch; }
+.lede { color: var(--ink-2); max-width: 72ch; margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 6px; }
+.stat { display: grid; }
+.stat b { font: 500 22px/1.2 "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--ink-3); }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; box-shadow: var(--shadow); padding: 20px; }
+.panel h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+.panel .sub { margin: 0 0 14px; color: var(--ink-3); font-size: 13px; }
+.chart-scroll { overflow-x: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+svg text { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+svg .axis { fill: var(--ink-3); font-size: 11px; }
+svg .grid { stroke: var(--rule-soft); stroke-width: 1; }
+svg .grid.major { stroke: var(--rule); }
+svg .lbl { fill: var(--ink-2); font-size: 12.5px; }
+svg a .lbl:hover { fill: var(--ink); text-decoration: underline; }
+svg .val { fill: var(--ink); font: 500 12px "IBM Plex Mono", monospace; }
+svg .val.dim { fill: var(--ink-3); font-weight: 400; }
+svg .hit { fill: transparent; cursor: default; }
+svg .row-hover { fill: var(--rule-soft); opacity: 0; }
+svg g.row:hover .row-hover { opacity: 1; }
+
+.demos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 28px; }
+main { min-width: 0; }
+article.demo { scroll-margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.demo-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.demo-head .num { font: 500 13px "IBM Plex Mono", monospace; color: var(--ink-3); }
+.demo-head h2 { font-size: 21px; margin: 0; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.chip.confirmed { color: var(--good); background: var(--good-bg); }
+.chip.partly, .chip.tradeoff { color: var(--warn); background: var(--warn-bg); }
+.chip.myth { color: var(--serious); background: var(--serious-bg); }
+.chip.different, .chip.equivalent { color: var(--info); background: var(--info-bg); }
+.speed { font: 600 13px "IBM Plex Mono", monospace; color: var(--after); font-variant-numeric: tabular-nums; }
+.article-ref { font-size: 13px; color: var(--ink-3); margin: -8px 0 0; }
+.claim { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--rule); color: var(--ink-2); max-width: 80ch; font-style: italic; }
+.claim-lbl { font-style: normal; font-weight: 600; color: var(--ink-2); }
+.verdict { margin: 0; max-width: 80ch; }
+.verdict b { font-weight: 600; }
+.verdict strong { font-weight: 600; color: var(--ink); background: var(--warn-bg); padding: 1px 3px; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+.pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 860px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.side { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; min-width: 0; }
+.side.before { border-top: 3px solid var(--before); }
+.side.after { border-top: 3px solid var(--after); }
+.side.neutral { border-top: 3px solid var(--neutral-mark); }
+.side-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+.side-head .role { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--ink-3); }
+.side-head code { font-size: 12.5px; color: var(--ink-2); }
+.side .desc { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+.big { font: 500 26px/1.1 "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.big small { font-size: 13px; color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+.metrics { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.metrics b { color: var(--ink-2); font-weight: 500; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--rule-soft); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+.preamble { font-size: 12px; color: var(--ink-3); }
+.k { color: var(--kw); font-weight: 500; } .s { color: var(--str); } .d { color: var(--num); } .c { color: var(--com); font-style: italic; }
+.pn { color: var(--ink); }
+.pn.seq { color: var(--seq); background: var(--seq-bg); border-radius: 3px; padding: 0 3px; }
+.pn.idx { color: var(--idx); background: var(--idx-bg); border-radius: 3px; padding: 0 3px; }
+.pr { color: var(--ink-3); }
+
+.strip { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px 4px; }
+.strip .cap { font-size: 12px; color: var(--ink-3); margin: 0 0 2px; }
+.infos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.infos h3, details h3 { font-size: 13px; font-weight: 600; margin: 0 0 6px; color: var(--ink-2); }
+details.more { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-size: 13.5px; color: var(--ink-2); font-weight: 500; }
+details.more > .body { padding: 0 14px 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+th { color: var(--ink-3); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+td.num-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.num-cell { text-align: right; }
+details.case > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); padding: 2px 0; }
+details.case > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+
+.tip {
+  position: absolute; pointer-events: none; z-index: 10; max-width: 300px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .18); padding: 8px 10px; font-size: 12.5px; line-height: 1.45;
+}
+.tip b { font-weight: 600; }
+.tip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+.tip .row span:first-child { color: var(--ink-3); }
+.env-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; margin-top: 6px; }
+.env-grid h3, .env-block h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 0 0 6px; }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
+dl.kv dt { color: var(--ink-3); }
+dl.kv dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.env-block { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.src { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--info-bg); color: var(--info); white-space: nowrap; }
+.src.changed { background: var(--warn-bg); color: var(--warn); }
+.env-note { font-size: 13px; color: var(--ink-3); margin: 4px 0 0; max-width: 80ch; }
+.mem { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 20px; }
+@media (min-width: 980px) { .mem { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+.mem-card { border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
+.mem-card h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 0; }
+.facts { display: grid; gap: 10px; }
+.fact { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.fact .fk { font-size: 12px; color: var(--ink-3); }
+.fact .fv { font: 500 14px "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.fact .fe { font-size: 12.5px; color: var(--ink-2); }
+dl.guide { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 0; font-size: 13px; }
+dl.guide dt { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink); }
+dl.guide dd { margin: 0; color: var(--ink-2); }
+footer { margin-top: 40px; color: var(--ink-3); font-size: 13px; max-width: 80ch; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<style>
+.run-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin: 0 0 10px; }
+.run-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+.charts { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 900px) { .charts { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.chart-box { border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px 6px; min-width: 0; }
+.chart-box h3 { margin: 0 0 2px; font-size: 13px; font-weight: 600; }
+.chart-box p { margin: 0 0 6px; font-size: 12px; color: var(--ink-3); }
+.scenario { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; scroll-margin-top: 20px; }
+.scenario-head h2 { margin: 0 0 2px; font-size: 21px; font-weight: 600; letter-spacing: -.01em; }
+.scenario-head p { margin: 0; color: var(--ink-2); max-width: 80ch; }
+.scenario-head .mix { font-size: 12.5px; color: var(--ink-3); font-family: "IBM Plex Mono", monospace; margin-top: 4px; }
+.finding { border-left: 3px solid var(--rule); padding: 2px 0 2px 14px; margin: 0 0 14px; max-width: 82ch; }
+.finding h3 { margin: 0 0 2px; font-size: 15px; font-weight: 600; }
+.finding p { margin: 0; color: var(--ink-2); }
+.reco { background: var(--good-bg); border: 1px solid transparent; border-left: 3px solid var(--good); border-radius: 6px; padding: 14px 16px; margin-top: 18px; }
+.reco b { color: var(--good); }
+td.better { color: var(--good); font-weight: 500; }
+td.worse { color: var(--serious); }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Sections"><h2>Sections</h2><ol id="toc"></ol></nav>
+  <main>
+    <header class="top">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h1>Load test: the OBP metric tables under concurrent traffic</h1>
+      <p class="lede" id="lede"></p>
+      <div class="stats" id="stats"></div>
+    </header>
+    <section class="panel" id="summary" aria-labelledby="sum-h" style="margin-bottom:28px">
+      <h2 id="sum-h">Every run at a glance</h2>
+      <p class="sub">Throughput (higher is better) and 95th-percentile latency (lower is better), per scenario and client count.</p>
+      <div class="run-legend" id="legend"></div>
+      <div class="chart-scroll"><svg id="overview" role="img" aria-label="Throughput and latency per scenario and client count"></svg></div>
+    </section>
+    <div id="scenarios"></div>
+    <section class="panel" id="findings" style="margin-top:28px">
+      <h2>Findings</h2>
+      <div id="findings-body"></div>
+      <div class="reco" id="reco"></div>
+    </section>
+    <section class="panel" id="environment" style="margin-top:28px">
+      <h2>Test environment</h2>
+      <p class="sub" id="env-sub"></p>
+      <div class="env-grid" id="env-grid"></div>
+      <div class="env-block"><h3>Dataset (obp_loadtest_base)</h3><div class="table-wrap" id="env-tables"></div></div>
+      <div class="env-block"><h3>PostgreSQL settings during the runs</h3><div class="table-wrap" id="env-settings"></div></div>
+      <div class="env-block"><h3>Reproduce</h3><pre id="env-repro"></pre></div>
+    </section>
+    <footer id="footer"></footer>
+  </main>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script type="application/json" id="data">__DATA__</script>
+<script>
+(function () {
+  const R = JSON.parse(document.getElementById("data").textContent);
+  const NS = "http://www.w3.org/2000/svg";
+  const COLORS = ["var(--before)", "var(--after)", "var(--neutral-mark)"];
+  const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const n = v => v == null ? "-" : Number(v).toLocaleString("en-US");
+  const fmtMs = v => v == null ? "-" : v >= 1000 ? (v / 1000).toFixed(2) + " s" : v >= 10 ? Math.round(v) + " ms" : v.toFixed(2) + " ms";
+  const fmtTps = v => v == null ? "-" : v >= 100 ? Math.round(v).toLocaleString("en-US") : v.toFixed(1);
+  const pct = (a, b) => (a == null || !b) ? "" : (a / b - 1) * 100;
+  const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag);
+    for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+  const run = (lab, sc, c) => (R.scenarios.find(s => s.name === sc) || {runs: {}}).runs[lab]?.[c];
+
+  const tip = document.getElementById("tip");
+  function showTip(evt, html) {
+    tip.innerHTML = html; tip.hidden = false;
+    let x = evt.pageX + 14, y = evt.pageY + 14;
+    if (x + tip.offsetWidth > window.scrollX + document.documentElement.clientWidth - 8) x = evt.pageX - tip.offsetWidth - 14;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+  }
+  const hideTip = () => { tip.hidden = true; };
+  const tipRows = rows => rows.map(([k, v]) => `<div class="row"><span>${k}</span><span>${v}</span></div>`).join("");
+
+  // --- line chart: value per client count, one line per run ------------------------------------
+  function lineChart(scenario, metric, opts) {
+    const cs = scenario.clients, W = 420, L = 52, Rt = 16, top = 14, H = 210, bottom = H - 30;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img",
+      "aria-label": `${metric} per client count for ${scenario.name}` });
+    svg.style.width = "100%"; svg.style.height = "auto"; svg.style.minWidth = "320px";
+    const vals = R.labels.flatMap(lab => cs.map(c => run(lab, scenario.name, c)?.[metric]).filter(v => v != null));
+    const log = opts.log, max = Math.max(...vals), min = Math.min(...vals);
+    let y, ticks;
+    if (log) {
+      const lo = Math.floor(Math.log10(min)), hi = Math.ceil(Math.log10(max));
+      y = v => bottom - (Math.log10(Math.max(v, 10 ** lo)) - lo) / (hi - lo) * (bottom - top);
+      ticks = []; for (let e = lo; e <= hi; e++) ticks.push(10 ** e);
+    } else {
+      const hi = max * 1.1;
+      y = v => bottom - v / hi * (bottom - top);
+      ticks = [0, hi / 2, hi];
+    }
+    const x = i => L + (cs.length === 1 ? 0 : i / (cs.length - 1) * (W - L - Rt));
+    ticks.forEach(t => {
+      el("line", { x1: L - 6, x2: W - Rt, y1: y(t), y2: y(t), class: "grid" }, svg);
+      el("text", { x: L - 9, y: y(t) + 4, "text-anchor": "end", class: "axis" }, svg).textContent = opts.fmt(t);
+    });
+    cs.forEach((c, i) => el("text", { x: x(i), y: H - 8, "text-anchor": "middle", class: "axis" }, svg)
+      .textContent = c + (i === cs.length - 1 ? " clients" : ""));
+    R.labels.forEach((lab, li) => {
+      const pts = cs.map((c, i) => [x(i), run(lab, scenario.name, c)?.[metric]]).filter(p => p[1] != null);
+      if (!pts.length) return;
+      el("polyline", { points: pts.map(p => `${p[0]},${y(p[1])}`).join(" "), fill: "none",
+        stroke: COLORS[li % 3], "stroke-width": 2 }, svg);
+      pts.forEach(([px, v], i) => {
+        el("circle", { cx: px, cy: y(v), r: 4.5, fill: COLORS[li % 3], stroke: "var(--surface)", "stroke-width": 1.5 }, svg);
+        const hit = el("circle", { cx: px, cy: y(v), r: 12, class: "hit" }, svg);
+        const c = cs[i], other = R.labels.filter(l => l !== lab)[0];
+        const ov = other ? run(other, scenario.name, c)?.[metric] : null;
+        const d = pct(v, ov);
+        hit.addEventListener("mousemove", e => showTip(e, `<b>${esc(scenario.name)}, ${c} client${c > 1 ? "s" : ""}</b>`
+          + tipRows([[esc(lab), opts.fmt(v)]].concat(ov != null ? [[esc(other), opts.fmt(ov)],
+            ["difference", (d > 0 ? "+" : "") + d.toFixed(0) + "%"]] : []))));
+        hit.addEventListener("mouseleave", hideTip);
+      });
+    });
+    return svg;
+  }
+
+  // --- dumbbell: per query type, reference vs last run ------------------------------------------
+  function queryChart(scenario, clients) {
+    const scripts = scenario.scripts.filter(k => run(R.reference, scenario.name, clients)?.scripts[k]);
+    if (scripts.length < 2) return null;
+    const W = 900, L = 250, Rt = 92, top = 26, rh = 26, H = top + scripts.length * rh + 8;
+    const svg = el("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "p95 per query type" });
+    svg.style.width = "100%"; svg.style.height = "auto"; svg.style.minWidth = "560px";
+    const all = scripts.flatMap(k => R.labels.map(l => run(l, scenario.name, clients)?.scripts[k]?.p95).filter(Boolean));
+    const lo = Math.floor(Math.log10(Math.min(...all))), hi = Math.ceil(Math.log10(Math.max(...all)));
+    const x = v => L + (Math.log10(Math.max(v, 10 ** lo)) - lo) / (hi - lo) * (W - L - Rt);
+    for (let e = lo; e <= hi; e++) {
+      const t = 10 ** e;
+      el("line", { x1: x(t), x2: x(t), y1: top - 8, y2: H - 4, class: "grid major" }, svg);
+      el("text", { x: x(t), y: top - 14, "text-anchor": "middle", class: "axis" }, svg)
+        .textContent = t >= 1000 ? (t / 1000) + " s" : t + " ms";
+    }
+    scripts.forEach((k, i) => {
+      const y = top + i * rh + rh / 2, g = el("g", { class: "row" }, svg);
+      el("rect", { x: 0, y: y - rh / 2, width: W, height: rh, rx: 4, class: "row-hover" }, g);
+      const t = el("text", { x: 0, y: y + 4, class: "lbl" }, g);
+      t.textContent = k.replace(".sql", "");
+      const sub = el("text", { x: 0, y: y + 4, class: "lbl", "font-size": "11", fill: "var(--ink-3)" }, g);
+      sub.setAttribute("x", 132); sub.textContent = (R.queries[k] || "").slice(0, 28);
+      const vals = R.labels.map(lab => [lab, run(lab, scenario.name, clients)?.scripts[k]?.p95]).filter(v => v[1] != null);
+      if (vals.length > 1) el("line", { x1: x(vals[0][1]), x2: x(vals[vals.length - 1][1]), y1: y, y2: y,
+        stroke: "var(--neutral-mark)", "stroke-width": 2 }, g);
+      vals.forEach(([lab, v], li) => el("circle", { cx: x(v), cy: y, r: 6, fill: COLORS[R.labels.indexOf(lab) % 3],
+        stroke: "var(--surface)", "stroke-width": 2 }, g));
+      const a = vals[0][1], b = vals[vals.length - 1][1], r = a / b;
+      el("text", { x: W - 4, y: y + 4, "text-anchor": "end", class: "val" }, g).textContent =
+        vals.length > 1 ? (r >= 1.05 ? (r >= 10 ? Math.round(r).toLocaleString("en-US") : r.toFixed(1)) + "x faster"
+          : r <= 0.95 ? (1 / r).toFixed(1) + "x slower" : "same") : fmtMs(a);
+      const hit = el("rect", { x: 0, y: y - rh / 2, width: W, height: rh, class: "hit" }, g);
+      hit.addEventListener("mousemove", e => showTip(e, `<b>${esc(k)}</b><div style="color:var(--ink-3);margin:2px 0 6px">`
+        + esc(R.queries[k] || "") + "</div>" + tipRows(vals.map(([lab, v]) => [esc(lab) + " p95", fmtMs(v)]))));
+      hit.addEventListener("mouseleave", hideTip);
+    });
+    return svg;
+  }
+
+  // --- overview: small multiples, tps and p95 per scenario --------------------------------------
+  function overview() {
+    const svg = document.getElementById("overview");
+    const scs = R.scenarios, W = 960, colW = W / scs.length, H = 250, top = 30, bottom = H - 34;
+    svg.setAttribute("viewBox", `0 0 ${W} ${H}`); svg.style.width = "100%"; svg.style.height = "auto"; svg.style.minWidth = "640px";
+    scs.forEach((sc, si) => {
+      const x0 = si * colW + 56, x1 = (si + 1) * colW - 18;
+      el("text", { x: (x0 + x1) / 2, y: 16, "text-anchor": "middle", class: "lbl", "font-weight": "600" }, svg)
+        .textContent = sc.name;
+      const vals = R.labels.flatMap(l => sc.clients.map(c => run(l, sc.name, c)?.tps).filter(v => v != null));
+      const max = Math.max(...vals) * 1.15;
+      [0, max / 2, max].forEach(t => {
+        el("line", { x1: x0 - 4, x2: x1, y1: bottom - t / max * (bottom - top), y2: bottom - t / max * (bottom - top), class: "grid" }, svg);
+        el("text", { x: x0 - 7, y: bottom - t / max * (bottom - top) + 4, "text-anchor": "end", class: "axis" }, svg)
+          .textContent = fmtTps(t);
+      });
+      const x = i => x0 + (i / (sc.clients.length - 1)) * (x1 - x0);
+      const y = v => bottom - v / max * (bottom - top);
+      sc.clients.forEach((c, i) => el("text", { x: x(i), y: H - 12, "text-anchor": "middle", class: "axis" }, svg).textContent = c);
+      R.labels.forEach((lab, li) => {
+        const pts = sc.clients.map((c, i) => [x(i), run(lab, sc.name, c)?.tps]).filter(p => p[1] != null);
+        el("polyline", { points: pts.map(p => `${p[0]},${y(p[1])}`).join(" "), fill: "none", stroke: COLORS[li % 3], "stroke-width": 2 }, svg);
+        pts.forEach(([px, v], i) => {
+          el("circle", { cx: px, cy: y(v), r: 4, fill: COLORS[li % 3], stroke: "var(--surface)", "stroke-width": 1.5 }, svg);
+          const hit = el("circle", { cx: px, cy: y(v), r: 11, class: "hit" }, svg);
+          const c = sc.clients[i], r = run(lab, sc.name, c);
+          hit.addEventListener("mousemove", e => showTip(e, `<b>${esc(sc.name)}, ${c} clients — ${esc(lab)}</b>`
+            + tipRows([["throughput", fmtTps(r.tps) + " tps"], ["p50", fmtMs(r.p50)], ["p95", fmtMs(r.p95)], ["p99", fmtMs(r.p99)]])));
+          hit.addEventListener("mouseleave", hideTip);
+        });
+      });
+      el("text", { x: x0 - 7, y: top - 12, "text-anchor": "end", class: "axis" }, svg).textContent = "tps";
+    });
+  }
+
+  // --- tables -----------------------------------------------------------------------------------
+  function overallTable(sc) {
+    let h = `<table><thead><tr><th>Clients</th>` + R.labels.map(l =>
+      `<th class="num-cell">${esc(l)} tps</th><th class="num-cell">${esc(l)} p50</th><th class="num-cell">${esc(l)} p95</th><th class="num-cell">${esc(l)} p99</th>`).join("")
+      + (R.labels.length > 1 ? `<th class="num-cell">tps</th><th class="num-cell">p95</th>` : "") + `</tr></thead><tbody>`;
+    sc.clients.forEach(c => {
+      h += `<tr><td>${c}</td>`;
+      R.labels.forEach(lab => { const r = run(lab, sc.name, c);
+        h += `<td class="num-cell">${r ? fmtTps(r.tps) : "-"}</td><td class="num-cell">${r ? fmtMs(r.p50) : "-"}</td>`
+           + `<td class="num-cell">${r ? fmtMs(r.p95) : "-"}</td><td class="num-cell">${r ? fmtMs(r.p99) : "-"}</td>`; });
+      if (R.labels.length > 1) {
+        const a = run(R.labels[0], sc.name, c), b = run(R.labels[R.labels.length - 1], sc.name, c);
+        const dt = pct(b?.tps, a?.tps), dp = pct(b?.p95, a?.p95);
+        h += `<td class="num-cell ${dt > 5 ? "better" : dt < -5 ? "worse" : ""}">${dt === "" ? "-" : (dt > 0 ? "+" : "") + dt.toFixed(0) + "%"}</td>`
+           + `<td class="num-cell ${dp < -5 ? "better" : dp > 5 ? "worse" : ""}">${dp === "" ? "-" : (dp > 0 ? "+" : "") + dp.toFixed(0) + "%"}</td>`;
+      }
+      h += `</tr>`;
+    });
+    return h + `</tbody></table>`;
+  }
+
+  function queryTable(sc) {
+    let h = `<table><thead><tr><th>Query</th><th>What it does</th>`
+      + sc.clients.map(c => `<th class="num-cell">${c} client${c > 1 ? "s" : ""}</th>`).join("") + `</tr></thead><tbody>`;
+    sc.scripts.forEach(k => {
+      h += `<tr><td><code>${esc(k.replace(".sql", ""))}</code></td><td>${esc(R.queries[k] || "")}</td>`;
+      sc.clients.forEach(c => {
+        const vals = R.labels.map(lab => run(lab, sc.name, c)?.scripts[k]?.p95);
+        h += `<td class="num-cell">` + vals.map(v => v == null ? "-" : fmtMs(v)).join(" → ") + `</td>`;
+      });
+      h += `</tr>`;
+    });
+    return h + `</tbody></table><p class="sub" style="margin-top:6px">p95 per query type, ${R.labels.join(" → ")}.</p>`;
+  }
+
+  // --- build ------------------------------------------------------------------------------------
+  document.getElementById("eyebrow").textContent = R.meta.eyebrow;
+  document.getElementById("lede").innerHTML = R.meta.lede;
+  document.getElementById("legend").innerHTML = R.labels.map((l, i) =>
+    `<span><i style="background:${COLORS[i % 3]}"></i>${esc(l)}${l === R.reference ? " (reference)" : ""}</span>`).join("");
+
+  const readGain = (() => { const a = run(R.reference, "read", 16), b = run(R.labels[R.labels.length - 1], "read", 16);
+    return a && b ? (b.tps / a.tps) : null; })();
+  const wr = run(R.labels[R.labels.length - 1], "write", 16);
+  document.getElementById("stats").innerHTML = [
+    [R.labels.length, "runs compared"],
+    [R.scenarios.length * (R.scenarios[0]?.clients.length || 0), "measured runs each"],
+    [readGain ? readGain.toFixed(1) + "×" : "-", "read throughput at 16 clients"],
+    [wr ? fmtTps(wr.tps) : "-", "inserts/s at 16 clients"],
+  ].map(([v, l]) => `<div class="stat"><b>${v}</b><span>${l}</span></div>`).join("");
+
+  const box = document.getElementById("scenarios");
+  R.scenarios.forEach(sc => {
+    const sec = document.createElement("section");
+    sec.className = "panel scenario"; sec.id = "s-" + sc.name; sec.style.marginTop = "28px";
+    sec.innerHTML = `<div class="scenario-head"><h2>${esc(sc.name)} — ${esc(sc.title)}</h2><p>${esc(sc.desc)}</p>
+      <p class="mix">${sc.scripts.map(s => esc(s.replace(".sql", ""))).join(" · ")}</p></div>`;
+    const charts = document.createElement("div"); charts.className = "charts";
+    [["Throughput", "transactions per second, higher is better", "tps", false, fmtTps],
+     ["95th percentile latency", "log scale, lower is better", "p95", true, fmtMs]].forEach(([t, s, m, log, fmt]) => {
+      const c = document.createElement("div"); c.className = "chart-box";
+      c.innerHTML = `<h3>${t}</h3><p>${s}</p>`;
+      const wrap = document.createElement("div"); wrap.className = "chart-scroll";
+      wrap.appendChild(lineChart(sc, m, { log, fmt })); c.appendChild(wrap); charts.appendChild(c);
+    });
+    sec.appendChild(charts);
+    const tw = document.createElement("div"); tw.className = "table-wrap"; tw.innerHTML = overallTable(sc); sec.appendChild(tw);
+    const qc = queryChart(sc, sc.clients[sc.clients.length - 1]);
+    if (qc) {
+      const c = document.createElement("div"); c.className = "chart-box";
+      c.innerHTML = `<h3>Per query type at ${sc.clients[sc.clients.length - 1]} clients</h3><p>p95, log scale</p>`;
+      const wrap = document.createElement("div"); wrap.className = "chart-scroll"; wrap.appendChild(qc);
+      c.appendChild(wrap); sec.appendChild(c);
+    }
+    const det = document.createElement("details"); det.className = "more";
+    let b = `<summary>Per-query table, top statements and table statistics</summary><div class="body">`;
+    b += `<div class="table-wrap">${queryTable(sc)}</div>`;
+    R.labels.forEach(lab => {
+      const r = run(lab, sc.name, sc.clients[sc.clients.length - 1]);
+      if (!r) return;
+      b += `<div><h3>${esc(lab)} — heaviest statements (${sc.clients[sc.clients.length - 1]} clients)</h3><pre>${esc((r.statements || "").trim())}</pre></div>`;
+      b += `<div><h3>${esc(lab)} — table and index statistics</h3><pre>${esc((r.tables || "").trim())}</pre></div>`;
+      if (r.archive_job) b += `<div><h3>${esc(lab)} — background archive job</h3><pre>${esc(r.archive_job.trim())}</pre></div>`;
+    });
+    det.innerHTML = b + `</div>`; sec.appendChild(det);
+    box.appendChild(sec);
+  });
+
+  document.getElementById("findings-body").innerHTML = R.findings.map(f =>
+    `<div class="finding"><h3>${esc(f.title)}</h3><p>${f.body}</p></div>`).join("");
+  document.getElementById("reco").innerHTML = "<b>Recommendation.</b> " + R.recommendation;
+
+  const e = R.env;
+  document.getElementById("env-sub").textContent = "Collected from the run metadata; the runs themselves used the settings below.";
+  const kv = (t, o) => `<div><h3>${t}</h3><dl class="kv">` + Object.entries(o).map(([k, v]) =>
+    `<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join("") + `</dl></div>`;
+  document.getElementById("env-grid").innerHTML = kv("Machine", e.machine) + kv("Method", e.method);
+  document.getElementById("env-tables").innerHTML = `<table><thead><tr><th>Table</th><th class="num-cell">Rows</th><th class="num-cell">Data</th><th class="num-cell">Indexes</th></tr></thead><tbody>`
+    + e.tables.map(t => `<tr><td><code>${esc(t[0])}</code></td><td class="num-cell">${n(t[1])}</td><td class="num-cell">${esc(t[2])}</td><td class="num-cell">${esc(t[3])}</td></tr>`).join("") + `</tbody></table>`;
+  document.getElementById("env-settings").innerHTML = `<table><thead><tr><th>Setting</th><th>Value</th></tr></thead><tbody>`
+    + e.settings.map(s => `<tr><td><code>${esc(s.name)}</code></td><td class="mono">${esc(s.value)}</td></tr>`).join("") + `</tbody></table>`;
+  document.getElementById("env-repro").textContent = ["cd loadtest",
+    "./01_build_base.sh                 # once: build obp_loadtest_base (5M + 15M rows)",
+    "./run.sh baseline                  # 3 scenarios x 1/4/8/16 clients x 5 min",
+    "./run.sh corrid --apply tuning/02_index_correlationid.sql",
+    "./report.py baseline corrid        # this page"].join("\n");
+  document.getElementById("toc").innerHTML = R.scenarios.map(s =>
+    `<li><a href="#s-${s.name}"><span class="n">▸</span><span>${esc(s.name)}</span><span class="x"></span></a></li>`).join("")
+    + `<li><a href="#findings"><span class="n">▸</span><span>Findings</span><span class="x"></span></a></li>`
+    + `<li><a href="#environment"><span class="n">⚙</span><span>Environment</span><span class="x"></span></a></li>`;
+  document.getElementById("footer").innerHTML = "pgbench measures on the client side, so the times include the round trip "
+    + "and the result transfer. Percentiles come from a 10% sample of transactions. Each scenario runs against a fresh "
+    + "clone of the same data. Regenerate with <code>./report.py</code> in <code>loadtest/</code>.";
+})();
+</script>

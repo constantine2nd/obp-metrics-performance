@@ -1,0 +1,79 @@
+{
+ "file": "12_buffers.sql",
+ "title": "EXPLAIN BUFFERS: cache vs disk",
+ "category": "PostgreSQL feature",
+ "claim": [
+  "\"shared hit\" is data found in cache, \"shared read\" came from disk. If most pages are read, the working set",
+  "does not fit in memory. A query served from cache can be 100x faster than one hitting disk."
+ ],
+ "verdict": [
+  "Confirmed, with nuance. The small query (7.5k pages) read everything on its first run",
+  "({first:small_working_set}), then found all pages in the 128 MB cache ({t:small_working_set}). The large one",
+  "needs 69.5k pages (550 MB): it read them on every run ({t:large_working_set}) and pushed everything else out of",
+  "shared_buffers. Those reads mostly came from the OS page cache (16 GB RAM); from the disk itself they would be",
+  "slower. shared_buffers is at the 128 MB default: raising it (e.g. 4 GB) is the cheapest win on this machine."
+ ],
+ "compare": [
+  "none"
+ ],
+ "sections": [
+  {
+   "kind": "info",
+   "label": "shared_buffers and what occupies it right now (pg_buffercache)",
+   "sql": "SELECT current_setting('shared_buffers') AS shared_buffers;\nSELECT c.relname, count(*) AS buffers, pg_size_pretty(count(*) * 8192) AS size\n  FROM pg_buffercache b JOIN pg_class c ON b.relfilenode = pg_relation_filenode(c.oid)\n WHERE b.reldatabase = (SELECT oid FROM pg_database WHERE datname = current_database())\n GROUP BY c.relname ORDER BY count(*) DESC LIMIT 6;",
+   "output": "shared_buffers \n----------------\n 128MB\n(1 row)\n\n       relname        | buffers |  size   \n----------------------+---------+---------\n metric               |    7079 | 55 MB\n metricarchive        |    4748 | 37 MB\n metricarchive_pk     |     360 | 2880 kB\n metric_date_c        |     312 | 2496 kB\n metricarchive_date_c |     286 | 2288 kB\n metricarchive_url    |     255 | 2040 kB\n(6 rows)"
+  },
+  {
+   "ms": 9.473,
+   "planning_ms": 0.455,
+   "hit": 6571,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Bitmap Heap Scan (metricarchive) \u2192 Bitmap Index Scan (metricarchive_url)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=9.399 ms | buffers hit=6571 read=0\n  -> Bitmap Heap Scan (metricarchive) | rows=7575 (est 2661) loops=1 time=8.786 ms | buffers hit=6571 read=0\n    -> Bitmap Index Scan (metricarchive_url) | cond ((url)::text = '/obp/v5.1.0/management/metrics?offset=2&limit=1'::text) | rows=7575 (est 2661) loops=1 time=0.625 ms | buffers hit=10 read=0",
+   "label": "small_working_set",
+   "desc": "one archive URL, 7.5k rows spread over 3 years (~7.5k pages = 60 MB, fits in 128 MB)",
+   "mode": "explain",
+   "first_ms": 27.531,
+   "median_ms": 9.473,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM metricarchive WHERE url = '/obp/v5.1.0/management/metrics?offset=2&limit=1';",
+   "first_read": 6569,
+   "first_hit": 2,
+   "kind": "case"
+  },
+  {
+   "ms": 340.902,
+   "planning_ms": 1.377,
+   "hit": 0,
+   "read": 59484,
+   "io_ms": 168.031,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Bitmap Heap Scan (metricarchive) \u2192 Bitmap Index Scan (metricarchive_url)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=315.198 ms | buffers hit=0 read=59484\n  -> Bitmap Heap Scan (metricarchive) | rows=71766 (est 65575) loops=1 time=299.121 ms | buffers hit=0 read=59484\n    -> Bitmap Index Scan (metricarchive_url) | cond ((url)::text = '/berlin-group/v1.3/consents'::text) | rows=72494 (est 65575) loops=1 time=11.771 ms | buffers hit=0 read=67",
+   "label": "large_working_set",
+   "desc": "another URL, 72k rows (~70k pages = 550 MB, does not fit)",
+   "mode": "explain",
+   "first_ms": 263.677,
+   "median_ms": 254.265,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM metricarchive WHERE url = '/berlin-group/v1.3/consents';",
+   "first_read": 59186,
+   "first_hit": 298,
+   "kind": "case"
+  },
+  {
+   "kind": "info",
+   "label": "shared_buffers afterwards: the large query pushed other pages out",
+   "sql": "SELECT c.relname, count(*) AS buffers, pg_size_pretty(count(*) * 8192) AS size\n  FROM pg_buffercache b JOIN pg_class c ON b.relfilenode = pg_relation_filenode(c.oid)\n WHERE b.reldatabase = (SELECT oid FROM pg_database WHERE datname = current_database())\n GROUP BY c.relname ORDER BY count(*) DESC LIMIT 6;",
+   "output": "relname             | buffers |  size  \n---------------------------------+---------+--------\n metricarchive                   |   16256 | 127 MB\n pg_proc                         |       9 | 72 kB\n pg_proc_oid_index               |       7 | 56 kB\n pg_class                        |       6 | 48 kB\n pg_attribute_relid_attnum_index |       5 | 40 kB\n pg_amop                         |       5 | 40 kB\n(6 rows)"
+  }
+ ]
+}

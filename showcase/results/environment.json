@@ -1,0 +1,190 @@
+{
+ "collected": "2026-09-22 10:51",
+ "machine": {
+  "CPU": "11th Gen Intel(R) Core(TM) i7-11390H @ 3.40GHz (4 cores / 8 threads)",
+  "RAM": "15.4 GiB usable",
+  "Disk": "SK hynix PC801 HFS512GEJ9X101N 476,9G (SSD)",
+  "OS": "Linux Mint 21.3, kernel 5.15.0-190-generic"
+ },
+ "postgres": {
+  "Server": "PostgreSQL 14.24 (Ubuntu 14.24-0ubuntu0.22.04.1)",
+  "Client": "psql (PostgreSQL) 14.24 (Ubuntu 14.24-0ubuntu0.22.04.1)",
+  "Extensions": "pg_buffercache 1.3, pg_stat_statements 1.9, pg_trgm 1.6",
+  "Database": "obp_showcase, 6430 MB"
+ },
+ "settings": [
+  {
+   "name": "autovacuum",
+   "value": "on",
+   "source": "default",
+   "why": "keeps statistics fresh; demo 01 turns it off for its own table to show stale statistics"
+  },
+  {
+   "name": "checkpoint_timeout",
+   "value": "5min",
+   "source": "default",
+   "why": "checkpoint interval; a checkpoint during a case can add write time"
+  },
+  {
+   "name": "effective_cache_size",
+   "value": "4GB",
+   "source": "default",
+   "why": "planner's guess of total cache (shared_buffers + OS); higher favours index scans"
+  },
+  {
+   "name": "jit",
+   "value": "on",
+   "source": "default",
+   "why": "compiles expressions of large queries; adds start-up time to big aggregates (11, 14)"
+  },
+  {
+   "name": "maintenance_work_mem",
+   "value": "64MB",
+   "source": "default",
+   "why": "index build speed; the demos set 1 GB in their own session"
+  },
+  {
+   "name": "max_parallel_workers",
+   "value": "8",
+   "source": "default",
+   "why": "parallel workers available to all queries (demo 14)"
+  },
+  {
+   "name": "max_parallel_workers_per_gather",
+   "value": "2",
+   "source": "default",
+   "why": "workers per query: parallel scans in 04, 06, 11, 17; varied 0-6 in demo 14"
+  },
+  {
+   "name": "max_wal_size",
+   "value": "1GB",
+   "source": "configuration file",
+   "why": "checkpoint distance; matters for index builds and bulk writes"
+  },
+  {
+   "name": "max_worker_processes",
+   "value": "8",
+   "source": "default",
+   "why": "upper limit for parallel workers (demo 14)"
+  },
+  {
+   "name": "pg_stat_statements.track",
+   "value": "top",
+   "source": "default",
+   "why": "which statements pg_stat_statements records (demo 19)"
+  },
+  {
+   "name": "random_page_cost",
+   "value": "4",
+   "source": "default",
+   "why": "4 is the spinning-disk default; on NVMe ~1.1 is common and shifts plans to index scans"
+  },
+  {
+   "name": "shared_buffers",
+   "value": "128MB",
+   "source": "configuration file",
+   "why": "PostgreSQL's cache: decides 'hit' vs 'read' in every plan (demos 00, 12)"
+  },
+  {
+   "name": "synchronous_commit",
+   "value": "on",
+   "source": "default",
+   "why": "each commit waits for the WAL flush; affects the insert cases (07, 10, 20)"
+  },
+  {
+   "name": "track_io_timing",
+   "value": "on",
+   "source": "configuration file",
+   "why": "adds I/O read time to BUFFERS output and pg_stat_statements"
+  },
+  {
+   "name": "work_mem",
+   "value": "4MB",
+   "source": "default",
+   "why": "per sort / hash step; top-N sorts and aggregates (01, 07, 11) fit in 4 MB here"
+  }
+ ],
+ "tables": [
+  {
+   "table": "metric",
+   "rows": 5032502,
+   "data": "1000 MB",
+   "indexes": "360 MB",
+   "index_count": 6,
+   "from": "2025-08-18",
+   "to": "2026-09-22"
+  },
+  {
+   "table": "metricarchive",
+   "rows": 15137962,
+   "data": "3543 MB",
+   "indexes": "1473 MB",
+   "index_count": 10,
+   "from": "2022-09-23",
+   "to": "2025-09-22"
+  }
+ ],
+ "method": {
+  "Timing": "EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON), median of 5 runs (3 when the first run takes over 2 s); first run reported separately",
+  "Client timing": "psql wall clock, results discarded, minus psql start-up (22 ms, measured each run)",
+  "Isolation": "each demo creates its own indexes/tables and drops them afterwards; data-changing cases run in BEGIN ... ROLLBACK",
+  "Runner": "showcase.py, Python 3.10.12"
+ },
+ "memory": {
+  "sizes": [
+   {
+    "label": "RAM (usable)",
+    "bytes": 16498978816,
+    "kind": "memory"
+   },
+   {
+    "label": "OS page cache (at collection)",
+    "bytes": 6595805184,
+    "kind": "memory"
+   },
+   {
+    "label": "effective_cache_size (planner assumption)",
+    "bytes": 4294967296,
+    "kind": "memory"
+   },
+   {
+    "label": "shared_buffers (PostgreSQL cache)",
+    "bytes": 134217728,
+    "kind": "memory"
+   },
+   {
+    "label": "obp_showcase database",
+    "bytes": 6742314331,
+    "kind": "data"
+   },
+   {
+    "label": "metricarchive + indexes",
+    "bytes": 5259862016,
+    "kind": "data"
+   },
+   {
+    "label": "metric + indexes",
+    "bytes": 1426186240,
+    "kind": "data"
+   }
+  ],
+  "shared_buffers": 134217728,
+  "effective_cache_size": 4294967296,
+  "work_mem": 4194304,
+  "maintenance_work_mem": 67108864,
+  "ram": 16498978816,
+  "ram_available": 6331867136,
+  "page_cache": 6595805184,
+  "swap": 21134385152,
+  "db_bytes": 6742314331,
+  "run": {
+   "pages_hit": 26423181,
+   "pages_read": 37134851,
+   "read_ms": 50028.438,
+   "hit_ratio": 0.41573315234178426,
+   "ms_per_read": 0.0013472098757040926,
+   "temp_files": 92,
+   "temp_bytes": 4769796872
+  }
+ }
+}

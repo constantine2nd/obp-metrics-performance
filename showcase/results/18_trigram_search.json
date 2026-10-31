@@ -1,0 +1,101 @@
+{
+ "file": "18_trigram_search.sql",
+ "title": "Substring search: LIKE '%...%' vs trigram index",
+ "category": "Indexing (text search)",
+ "claim": [
+  "A leading wildcard (LIKE '%...%') cannot use a normal index; a text-search index turns the full scan into milliseconds.",
+  "For URL substrings PostgreSQL's pg_trgm trigram index is the fitting tool."
+ ],
+ "verdict": [
+  "Confirmed. LIKE '%dynamic-entity%' scanned all 5M rows ({t:like_no_index}); a GIN trigram index made it",
+  "{t:like_trgm} ({x:like_no_index/like_trgm}), and ILIKE uses it too. Cost: a 184 MB index (18% of the table) and",
+  "a 28 s build. Worth it behind a URL search box, not as a default."
+ ],
+ "compare": [
+  "like_no_index",
+  "like_trgm"
+ ],
+ "sections": [
+  {
+   "ms": 312.886,
+   "planning_ms": 0.481,
+   "hit": 384,
+   "read": 127597,
+   "io_ms": 184.299,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Parallel Seq Scan (metric)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=292.971 ms | buffers hit=384 read=127597\n  -> Gather | rows=3 (est 2) loops=1 time=292.95 ms | workers=2 | buffers hit=384 read=127597\n    -> Aggregate | rows=1 (est 1) loops=3 time=273.433 ms | buffers hit=384 read=127597\n      -> Parallel Seq Scan (metric) | filter ((url)::text ~~ '%dynamic-entity%'::text) | rows=825 (est 478) loops=3 time=273.193 ms | removed by filter=1676681 | buffers hit=384 read=127597",
+   "label": "like_no_index",
+   "desc": "url LIKE '%dynamic-entity%' (2.5k of 5M rows)",
+   "mode": "explain",
+   "first_ms": 448.496,
+   "median_ms": 378.934,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM metric WHERE url LIKE '%dynamic-entity%';",
+   "first_read": 127981,
+   "first_hit": 0,
+   "kind": "case"
+  },
+  {
+   "kind": "step",
+   "label": "GIN trigram index on url",
+   "ms": 27893.530386005295,
+   "sql": "SET maintenance_work_mem = '1GB';\nCREATE INDEX sc_metric_url_trgm ON metric USING gin (url gin_trgm_ops);"
+  },
+  {
+   "ms": 8.928,
+   "planning_ms": 0.75,
+   "hit": 2936,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Bitmap Heap Scan (metric) \u2192 Bitmap Index Scan (sc_metric_url_trgm)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=8.832 ms | buffers hit=2936 read=0\n  -> Bitmap Heap Scan (metric) | rows=2475 (est 1147) loops=1 time=8.66 ms | buffers hit=2936 read=0\n    -> Bitmap Index Scan (sc_metric_url_trgm) | cond ((url)::text ~~ '%dynamic-entity%'::text) | rows=2475 (est 1147) loops=1 time=5.88 ms | buffers hit=466 read=0",
+   "label": "like_trgm",
+   "desc": "same query with the trigram index",
+   "mode": "explain",
+   "first_ms": 21.062,
+   "median_ms": 8.928,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM metric WHERE url LIKE '%dynamic-entity%';",
+   "first_read": 2495,
+   "first_hit": 441,
+   "kind": "case"
+  },
+  {
+   "ms": 10.875,
+   "planning_ms": 1.18,
+   "hit": 2936,
+   "read": 0,
+   "io_ms": 0.0,
+   "rows": 1,
+   "width": 40,
+   "temp": 0,
+   "heap_fetches": 0,
+   "plan": "Aggregate \u2192 Bitmap Heap Scan (metric) \u2192 Bitmap Index Scan (sc_metric_url_trgm)",
+   "plan_text": "Aggregate | rows=1 (est 1) loops=1 time=10.768 ms | buffers hit=2936 read=0\n  -> Bitmap Heap Scan (metric) | rows=2475 (est 1147) loops=1 time=10.507 ms | buffers hit=2936 read=0\n    -> Bitmap Index Scan (sc_metric_url_trgm) | cond ((url)::text ~~* '%Dynamic-Entity%'::text) | rows=2475 (est 1147) loops=1 time=5.413 ms | buffers hit=466 read=0",
+   "label": "ilike_trgm",
+   "desc": "case-insensitive ILIKE uses it too",
+   "mode": "explain",
+   "first_ms": 10.795,
+   "median_ms": 10.76,
+   "runs": 5,
+   "sql": "SELECT count(*), avg(duration) FROM metric WHERE url ILIKE '%Dynamic-Entity%';",
+   "first_read": 0,
+   "first_hit": 2936,
+   "kind": "case"
+  },
+  {
+   "kind": "info",
+   "label": "Index size",
+   "sql": "SELECT pg_size_pretty(pg_relation_size('sc_metric_url_trgm')) AS trigram_index_size,\n       pg_size_pretty(pg_table_size('metric')) AS metric_table_size;",
+   "output": "trigram_index_size | metric_table_size \n--------------------+-------------------\n 201 MB             | 1000 MB\n(1 row)"
+  }
+ ]
+}

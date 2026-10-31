@@ -1,0 +1,292 @@
+<meta charset="utf-8">
+<title>OBP Metric Database Improvements</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --bg: #f4f6f9;
+  --surface: #ffffff;
+  --ink: #141820;
+  --ink-2: #4c5563;
+  --ink-3: #7c8594;
+  --rule: #dfe3ea;
+  --rule-soft: #eceff4;
+  --code-bg: #f7f8fb;
+  --before: #eb6834;
+  --after: #2a78d6;
+  --neutral-mark: #a3abb8;
+  --kw: #2a5bb8;
+  --str: #1b8a5e;
+  --num: #a2560f;
+  --com: #8a92a0;
+  --seq: #c0461a;
+  --seq-bg: #fdeee6;
+  --idx: #1f63b8;
+  --idx-bg: #e8f1fc;
+  --good: #0a7d0a;   --good-bg: #e6f4e6;
+  --warn: #8a5a00;   --warn-bg: #fdf1d6;
+  --serious: #b04a1e; --serious-bg: #fbe7de;
+  --info: #4c5563;   --info-bg: #eceff4;
+  --shadow: 0 1px 2px rgba(20, 24, 32, .06), 0 4px 16px rgba(20, 24, 32, .05);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1216; --surface: #171b21; --ink: #eef1f5; --ink-2: #b3bac6; --ink-3: #7f8896;
+    --rule: #2a3039; --rule-soft: #20252c; --code-bg: #12161b;
+    --before: #d95926; --after: #3987e5; --neutral-mark: #69727f;
+    --kw: #7fb0f5; --str: #5fcf9c; --num: #f0a55c; --com: #6f7887;
+    --seq: #ff8a5c; --seq-bg: #3a2119; --idx: #7fb0f5; --idx-bg: #16273d;
+    --good: #5fd35f; --good-bg: #16301a; --warn: #f5c451; --warn-bg: #352a10;
+    --serious: #ff8a5c; --serious-bg: #3a2119; --info: #b3bac6; --info-bg: #232931;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1216; --surface: #171b21; --ink: #eef1f5; --ink-2: #b3bac6; --ink-3: #7f8896;
+  --rule: #2a3039; --rule-soft: #20252c; --code-bg: #12161b;
+  --before: #d95926; --after: #3987e5; --neutral-mark: #69727f;
+  --kw: #7fb0f5; --str: #5fcf9c; --num: #f0a55c; --com: #6f7887;
+  --seq: #ff8a5c; --seq-bg: #3a2119; --idx: #7fb0f5; --idx-bg: #16273d;
+  --good: #5fd35f; --good-bg: #16301a; --warn: #f5c451; --warn-bg: #352a10;
+  --serious: #ff8a5c; --serious-bg: #3a2119; --info: #b3bac6; --info-bg: #232931;
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4);
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font: 15px/1.55 "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+code, pre, .mono, .num-cell { font-family: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace; }
+a { color: var(--after); }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--after); outline-offset: 2px; border-radius: 3px; }
+
+.shell {
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: 32px;
+  max-width: 1320px; margin: 0 auto; padding: 32px 20px 64px;
+}
+@media (min-width: 1180px) { .shell { grid-template-columns: 240px minmax(0, 1fr); } }
+
+nav.toc { display: none; }
+@media (min-width: 1180px) {
+  nav.toc {
+    display: block; position: sticky; top: calc(env(safe-area-inset-top, 0px) + 24px);
+    align-self: start; max-height: calc(100vh - 48px); overflow-y: auto; font-size: 13px;
+  }
+}
+nav.toc h2 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 8px; font-weight: 600; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+nav.toc a {
+  display: grid; grid-template-columns: 22px 1fr auto; gap: 6px; align-items: baseline;
+  padding: 4px 6px; border-radius: 4px; color: var(--ink-2); text-decoration: none;
+}
+nav.toc a:hover { background: var(--rule-soft); color: var(--ink); }
+nav.toc .n { color: var(--ink-3); font-family: "IBM Plex Mono", monospace; font-size: 11px; }
+nav.toc .x { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+
+header.top { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-bottom: 28px; }
+.eyebrow { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; }
+h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.12; letter-spacing: -.02em; margin: 0; font-weight: 600; text-wrap: balance; max-width: 22ch; }
+.lede { color: var(--ink-2); max-width: 72ch; margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 10px 28px; margin-top: 6px; }
+.stat { display: grid; }
+.stat b { font: 500 22px/1.2 "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.stat span { font-size: 12px; color: var(--ink-3); }
+
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 10px; box-shadow: var(--shadow); padding: 20px; }
+.panel h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+.panel .sub { margin: 0 0 14px; color: var(--ink-3); font-size: 13px; }
+.chart-scroll { overflow-x: auto; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13px; color: var(--ink-2); margin-bottom: 8px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+svg text { font-family: "IBM Plex Sans", system-ui, sans-serif; }
+svg .axis { fill: var(--ink-3); font-size: 11px; }
+svg .grid { stroke: var(--rule-soft); stroke-width: 1; }
+svg .grid.major { stroke: var(--rule); }
+svg .lbl { fill: var(--ink-2); font-size: 12.5px; }
+svg a .lbl:hover { fill: var(--ink); text-decoration: underline; }
+svg .val { fill: var(--ink); font: 500 12px "IBM Plex Mono", monospace; }
+svg .val.dim { fill: var(--ink-3); font-weight: 400; }
+svg .hit { fill: transparent; cursor: default; }
+svg .row-hover { fill: var(--rule-soft); opacity: 0; }
+svg g.row:hover .row-hover { opacity: 1; }
+
+.demos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; margin-top: 28px; }
+main { min-width: 0; }
+article.demo { scroll-margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.demo-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.demo-head .num { font: 500 13px "IBM Plex Mono", monospace; color: var(--ink-3); }
+.demo-head h2 { font-size: 21px; margin: 0; font-weight: 600; letter-spacing: -.01em; text-wrap: balance; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.chip.confirmed { color: var(--good); background: var(--good-bg); }
+.chip.partly, .chip.tradeoff { color: var(--warn); background: var(--warn-bg); }
+.chip.myth { color: var(--serious); background: var(--serious-bg); }
+.chip.different, .chip.equivalent { color: var(--info); background: var(--info-bg); }
+.speed { font: 600 13px "IBM Plex Mono", monospace; color: var(--after); font-variant-numeric: tabular-nums; }
+.article-ref { font-size: 13px; color: var(--ink-3); margin: -8px 0 0; }
+.claim { margin: 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--rule); color: var(--ink-2); max-width: 80ch; font-style: italic; }
+.claim-lbl { font-style: normal; font-weight: 600; color: var(--ink-2); }
+.verdict { margin: 0; max-width: 80ch; }
+.verdict b { font-weight: 600; }
+.verdict strong { font-weight: 600; color: var(--ink); background: var(--warn-bg); padding: 1px 3px; border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }
+
+.pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 860px) { .pair { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+.side { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; min-width: 0; }
+.side.before { border-top: 3px solid var(--before); }
+.side.after { border-top: 3px solid var(--after); }
+.side.neutral { border-top: 3px solid var(--neutral-mark); }
+.side-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; align-items: baseline; }
+.side-head .role { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; font-weight: 600; color: var(--ink-3); }
+.side-head code { font-size: 12.5px; color: var(--ink-2); }
+.side .desc { font-size: 13.5px; color: var(--ink-2); margin: 0; }
+.big { font: 500 26px/1.1 "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.big small { font-size: 13px; color: var(--ink-3); font-weight: 400; margin-left: 6px; }
+.metrics { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 12.5px; color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.metrics b { color: var(--ink-2); font-weight: 500; }
+pre { margin: 0; background: var(--code-bg); border: 1px solid var(--rule-soft); border-radius: 6px; padding: 10px 12px; overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+.preamble { font-size: 12px; color: var(--ink-3); }
+.k { color: var(--kw); font-weight: 500; } .s { color: var(--str); } .d { color: var(--num); } .c { color: var(--com); font-style: italic; }
+.pn { color: var(--ink); }
+.pn.seq { color: var(--seq); background: var(--seq-bg); border-radius: 3px; padding: 0 3px; }
+.pn.idx { color: var(--idx); background: var(--idx-bg); border-radius: 3px; padding: 0 3px; }
+.pr { color: var(--ink-3); }
+
+.strip { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; padding: 10px 14px 4px; }
+.strip .cap { font-size: 12px; color: var(--ink-3); margin: 0 0 2px; }
+.infos { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.infos h3, details h3 { font-size: 13px; font-weight: 600; margin: 0 0 6px; color: var(--ink-2); }
+details.more { background: var(--surface); border: 1px solid var(--rule); border-radius: 8px; }
+details.more > summary { cursor: pointer; padding: 10px 14px; font-size: 13.5px; color: var(--ink-2); font-weight: 500; }
+details.more > .body { padding: 0 14px 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.table-wrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+th, td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--rule-soft); vertical-align: top; }
+th { color: var(--ink-3); font-weight: 500; font-size: 11.5px; text-transform: uppercase; letter-spacing: .05em; }
+td.num-cell { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+th.num-cell { text-align: right; }
+details.case > summary { cursor: pointer; font-size: 13px; color: var(--ink-2); padding: 2px 0; }
+details.case > div { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin-top: 6px; }
+
+.tip {
+  position: absolute; pointer-events: none; z-index: 10; max-width: 300px;
+  background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, .18); padding: 8px 10px; font-size: 12.5px; line-height: 1.45;
+}
+.tip b { font-weight: 600; }
+.tip .row { display: flex; justify-content: space-between; gap: 14px; font-variant-numeric: tabular-nums; }
+.tip .row span:first-child { color: var(--ink-3); }
+.env-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; margin-top: 6px; }
+.env-grid h3, .env-block h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 0 0 6px; }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 0; font-size: 13.5px; }
+dl.kv dt { color: var(--ink-3); }
+dl.kv dd { margin: 0; color: var(--ink); overflow-wrap: anywhere; }
+.env-block { margin-top: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+.src { font-size: 11px; padding: 1px 7px; border-radius: 999px; background: var(--info-bg); color: var(--info); white-space: nowrap; }
+.src.changed { background: var(--warn-bg); color: var(--warn); }
+.env-note { font-size: 13px; color: var(--ink-3); margin: 4px 0 0; max-width: 80ch; }
+.mem { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; margin-top: 20px; }
+@media (min-width: 980px) { .mem { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); } }
+.mem-card { border: 1px solid var(--rule); border-radius: 8px; padding: 14px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
+.mem-card h3 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; margin: 0; }
+.facts { display: grid; gap: 10px; }
+.fact { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px; }
+.fact .fk { font-size: 12px; color: var(--ink-3); }
+.fact .fv { font: 500 14px "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+.fact .fe { font-size: 12.5px; color: var(--ink-2); }
+dl.guide { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 5px 14px; margin: 0; font-size: 13px; }
+dl.guide dt { font-family: "IBM Plex Mono", monospace; font-size: 12.5px; color: var(--ink); }
+dl.guide dd { margin: 0; color: var(--ink-2); }
+footer { margin-top: 40px; color: var(--ink-3); font-size: 13px; max-width: 80ch; }
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+<style>
+.item { border-top: 1px solid var(--rule); padding: 18px 0 4px; display: grid; grid-template-columns: minmax(0,1fr); gap: 10px; }
+.item:first-of-type { border-top: none; }
+.item-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.item-head h3 { margin: 0; font-size: 18px; font-weight: 600; }
+.pill { font-size: 11.5px; font-weight: 500; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.pill.p1 { color: var(--serious); background: var(--serious-bg); }
+.pill.p2 { color: var(--warn); background: var(--warn-bg); }
+.pill.p3, .pill.p4 { color: var(--info); background: var(--info-bg); }
+.pill.p0 { color: var(--ink-3); background: var(--rule-soft); }
+.pill.c-measured { color: var(--good); background: var(--good-bg); }
+.pill.c-estimated { color: var(--warn); background: var(--warn-bg); }
+.what { margin: 0; color: var(--ink); }
+.evidence h4, .pc h4 { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 4px; font-weight: 600; }
+.evidence ul, .pc ul { margin: 0; padding-left: 18px; color: var(--ink-2); font-size: 14px; }
+.evidence li, .pc li { margin: 0 0 3px; }
+.pc { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
+@media (min-width: 820px) { .pc { grid-template-columns: minmax(0,1fr) minmax(0,1fr); } }
+.pros, .cons { border-left: 3px solid var(--good); padding-left: 12px; }
+.cons { border-left-color: var(--serious); }
+table a { text-decoration: none; }
+.tool { font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--ink-2); }
+.tool-line { margin: -4px 0 0; font-size: 13px; color: var(--ink-3); }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Groups"><h2>Groups</h2><ol><li><a href="#g-indexes"><span class="n">▸</span><span>Indexes</span><span class="x"></span></a></li><li><a href="#g-code"><span class="n">▸</span><span>Application and job changes</span><span class="x"></span></a></li><li><a href="#g-settings"><span class="n">▸</span><span>Server settings</span><span class="x"></span></a></li><li><a href="#g-situational"><span class="n">▸</span><span>Situational</span><span class="x"></span></a></li><li><a href="#g-rejected"><span class="n">▸</span><span>Tried and not recommended</span><span class="x"></span></a></li></ol></nav>
+  <main>
+    <header class="top">
+      <div class="eyebrow">PostgreSQL 14 · 5M metric + 15M metricarchive rows · measured on this machine</div>
+      <h1>What to change in the OBP metric database, and what it costs</h1>
+      <p class="lede">Everything below was measured on this machine against a copy of the OBP metric tables, scaled to 5M <code>metric</code> and 15M <code>metricarchive</code> rows and pseudonymized. Each item says what it buys, what it costs and how sure we are: <b>measured</b> means it was run in one of the two reports, <b>estimated</b> means the reasoning is sound but nobody ran it here.</p>
+      <div class="stats">
+        <div class="stat"><b>7.0×</b><span>read throughput from one index</span></div>
+        <div class="stat"><b>323×</b><span>faster request tracing</span></div>
+        <div class="stat"><b>±0%</b><span>its cost on inserts</span></div>
+        <div class="stat"><b>{n_measured}</b><span>of {n_total} items measured, not estimated</span></div>
+      </div>
+    </header>
+    <section class="panel">
+      <h2>All suggestions</h2>
+      <p class="sub">Sorted by topic, not by priority. Click a row for the full trade-off.</p>
+      <div class="table-wrap"><table><thead><tr><th class="num-cell">#</th><th>Change</th><th>Priority</th>
+      <th>Confidence</th><th>Strongest measured effect</th><th>Main cost</th>
+      <th>How to find it</th></tr></thead>
+      <tbody><tr><td class="num-cell">1</td><td><a href="#corrid">Index metric.correlationid</a></td><td><span class="pill p1">Do first</span></td><td><span class="pill c-measured">measured here</span></td><td>Load test, read scenario at 16 clients: throughput 31 → 219 tps (7.0x), p95 4.16 s → 307 ms (-93%)</td><td>283 MB of disk on a 5M-row table</td><td class="tool">observe → diagnose (missing-index) → explain (seq-scan) → loadtest run + compare</td></tr><tr><td class="num-cell">2</td><td><a href="#archive-corrid">Index metricarchive.correlationid, as a hash index</a></td><td><span class="pill p2">Worth doing</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 20: tracing one request across both tables 0.88 s → 0.04 ms once both tables are indexed; with only metric indexed the archive scan still costs ~0.75 s</td><td>512 MB of disk</td><td class="tool">diagnose (missing-index), explain (seq-scan)</td></tr><tr><td class="num-cell">3</td><td><a href="#metricid">Index metricarchive.metricid (upstream fix)</a></td><td><span class="pill p1">Do first</span></td><td><span class="pill c-measured">measured here</span></td><td>The archive job looks each row up by metricId twice (dedup in saveMetricsArchive, verify before delete) and no index existed: two full scans of metricarchive per archived row</td><td>Index build blocks writes to metricarchive at boot (seconds per few million rows); only the archive job writes there</td><td class="tool">diagnose (seq-scan on metricarchive), then the OBP source</td></tr><tr><td class="num-cell">4</td><td><a href="#dup-indexes">Drop the duplicate consent_reference_id indexes</a></td><td><span class="pill p2">Worth doing</span></td><td><span class="pill c-measured">measured here</span></td><td>Sizes on the test data: 33 MB (metric) + 100 MB (metricarchive) wasted per duplicate</td><td>Needs care upstream so the migration does not recreate it on the next deploy</td><td class="tool">diagnose (duplicate-index)</td></tr><tr><td class="num-cell">5</td><td><a href="#archive-batch">Archive in batches instead of row by row</a></td><td><span class="pill p1">Do first</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 10: moving 10,000 rows took 1.49 s row by row (20,000 statements) against 213 ms as one DELETE ... RETURNING feeding an INSERT: about 7x</td><td>A real code change in the scheduler, with its own tests</td><td class="tool">observe during an archive run, then the OBP source</td></tr><tr><td class="num-cell">6</td><td><a href="#keyset">Keyset pagination for /management/metrics</a></td><td><span class="pill p2">Worth doing</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 09: page 1 0.03 ms, page 1,000 3.1 ms, page 50,000 241 ms with OFFSET; keyset stays at 0.04 ms at any depth</td><td>API change: the client must pass the last seen values instead of an offset, so it cannot jump to page N directly</td><td class="tool">explain (top-n-sort)</td></tr><tr><td class="num-cell">7</td><td><a href="#projections">Stop selecting every column in hot paths</a></td><td><span class="pill p2">Worth doing</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 02: with only indexed columns the query becomes an Index Only Scan, 33 ms → 1.5 ms (22x), reading 89 pages instead of 15,366</td><td>Touches many call sites, and ORM projections are more code than loading an entity</td><td class="tool">diagnose (toast), explain (filter-waste)</td></tr><tr><td class="num-cell">8</td><td><a href="#mv">Pre-compute the dashboard aggregates</a></td><td><span class="pill p3">Later / if needed</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 11: 365-day top-APIs 663 ms → 30 ms (22x), 7-day 26x; the view is 11 MB against 1.4 GB of table; a full refresh takes 2.9 s (4.0 s concurrently)</td><td>Data is as stale as the refresh interval; not suitable for live per-request views</td><td class="tool">explain (slow), loadtest run + compare</td></tr><tr><td class="num-cell">9</td><td><a href="#shared-buffers">Raise shared_buffers from the 128 MB default</a></td><td><span class="pill p2">Worth doing</span></td><td><span class="pill c-estimated">estimated, not measured</span></td><td>Showcase demo 12: shared_buffers holds 2% of the 6.4 GB of data; the same query costs 28 ms cold and 9.5 ms once cached, and a large query evicts everything else</td><td><b>Not measured here.</b> On this machine the OS page cache already absorbs most reads (average read 1.4 µs), so the gain may be smaller than expected</td><td class="tool">diagnose (shared-buffers, cache-hit)</td></tr><tr><td class="num-cell">10</td><td><a href="#work-mem">Raise work_mem for the aggregate and refresh paths</a></td><td><span class="pill p3">Later / if needed</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase run: 7 GB of temp files, mostly the materialized view build and refresh sorting 5M rows</td><td>Multiplied per sort node and per connection: a global increase can exhaust RAM under load</td><td class="tool">diagnose (temp-files), explain (sort-spill)</td></tr><tr><td class="num-cell">11</td><td><a href="#parallel">Allow more parallel workers per query</a></td><td><span class="pill p3">Later / if needed</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 14, aggregating 15M archive rows: 3.83 s with 1 worker, 1.99 s with 2, 1.88 s with 4, 1.61 s with 6</td><td>Diminishing returns past 4 workers: the scan becomes I/O bound, not CPU bound</td><td class="tool">not covered by a check: measured by hand in the showcase</td></tr><tr><td class="num-cell">12</td><td><a href="#random-page-cost">Lower random_page_cost for SSD storage</a></td><td><span class="pill p3">Later / if needed</span></td><td><span class="pill c-estimated">estimated, not measured</span></td><td>The storage here is an NVMe SSD; measured average read time per page is 1.4 µs</td><td><b>Not measured here.</b> No before/after run was done with this setting</td><td class="tool">loadtest run + compare, one setting at a time</td></tr><tr><td class="num-cell">13</td><td><a href="#autovacuum">Tune autovacuum for the metric table</a></td><td><span class="pill p2">Worth doing</span></td><td><span class="pill c-measured">measured here</span></td><td>Load test, mixed scenario at 16 clients: 298,000 dead rows in metric after 5 minutes, autovacuum never ran during the run</td><td>More frequent vacuums cost I/O while running</td><td class="tool">diagnose (dead-rows)</td></tr><tr><td class="num-cell">14</td><td><a href="#covering">Covering index for the top-APIs query</a></td><td><span class="pill p3">Later / if needed</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 07: 50-116 ms → 36-41 ms (1.3-3x), answered from the index alone</td><td>Three times the size of the plain date index, on the table that receives every insert</td><td class="tool">explain (filter-waste)</td></tr><tr><td class="num-cell">15</td><td><a href="#partial">Partial index for error dashboards</a></td><td><span class="pill p3">Later / if needed</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 08: 8.9 MB against 151 MB for the full (httpcode, date_c) index, and at least as fast (9-12 ms vs 15-16 ms; 29-87 ms with no index)</td><td>Only used by queries whose WHERE matches the predicate</td><td class="tool">diagnose (missing-index), explain</td></tr><tr><td class="num-cell">16</td><td><a href="#trigram">Trigram index for URL substring search</a></td><td><span class="pill p4">Only on demand</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 18: LIKE '%dynamic-entity%' 379 ms → 8.9 ms (42x), and ILIKE uses it too</td><td>Large index and slower writes, for a feature that may not exist</td><td class="tool">explain (seq-scan on a LIKE filter)</td></tr><tr><td class="num-cell">17</td><td><a href="#brin">BRIN instead of B-tree on metricarchive.date_c</a></td><td><span class="pill p4">Only on demand</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 17: 136 kB against 326 MB (2,400x smaller); one day 762 ms → 14 ms without any index, but the B-tree is still faster: 3.4-4.6 ms vs 14-18 ms for a day, 40-46 ms vs 265-498 ms for a month</td><td>3-10x slower than the B-tree for the same query</td><td class="tool">not covered by a check: an index-size trade-off, measured by hand</td></tr><tr><td class="num-cell">18</td><td><a href="#partitioning">Partition metricarchive by month</a></td><td><span class="pill p3">Later / if needed</span></td><td><span class="pill c-estimated">estimated, not measured</span></td><td>The archive job currently deletes expired rows with a bulk DELETE, which rewrites index entries and leaves dead rows behind</td><td><b>Not measured here.</b> No partitioned variant was benchmarked</td><td class="tool">not covered by a check: a design change, measure with loadtest</td></tr><tr><td class="num-cell">19</td><td><a href="#or-union">Rewriting OR as UNION</a></td><td><span class="pill p0">Skip</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 05: OR across two indexed columns is answered with a BitmapOr of both indexes, 158 ms against 194 ms for the UNION rewrite</td><td>More SQL to maintain for no measured gain</td><td class="tool">showcase demo 05 (myth check)</td></tr><tr><td class="num-cell">20</td><td><a href="#hints">Forcing plans (hints, enable_* switches)</a></td><td><span class="pill p0">Skip</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 15: the planner's own choice (0.7-5.6 ms) beat every alternative it had rejected (bitmap + sort 19-32 ms, full scan 190-242 ms)</td><td>Not a production fix: a forced plan stops adapting when the data changes</td><td class="tool">showcase demo 15 (myth check)</td></tr><tr><td class="num-cell">21</td><td><a href="#explain-only">Trusting EXPLAIN ANALYZE alone</a></td><td><span class="pill p0">Skip</span></td><td><span class="pill c-measured">measured here</span></td><td>Showcase demo 02: after a wide column is added, EXPLAIN reports 7.8 → 10.2 ms while the client sees 10.5 → 123 ms, because large values live out of line and EXPLAIN never fetches them</td><td>It hides everything that happens while delivering rows</td><td class="tool">explain and pg_stat_statements both see what EXPLAIN hides</td></tr></tbody></table></div>
+    </section>
+    <section class="panel" id="g-indexes" style="margin-top:28px"><h2>Indexes</h2><p class="sub">Cheap to apply, easy to undo, and this is where the measured wins are.</p><article class="item" id="corrid"><div class="item-head"><h3>Index metric.correlationid</h3><span class="pill p1">Do first</span><span class="pill c-measured">measured here</span></div><p class="what"><code>CREATE INDEX CONCURRENTLY metric_correlationid ON metric (correlationid);</code></p><p class="tool-line">Find it with: <span class="tool">observe → diagnose (missing-index) → explain (seq-scan) → loadtest run + compare</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Load test, read scenario at 16 clients: throughput 31 → 219 tps (7.0x), p95 4.16 s → 307 ms (-93%)</li><li>The lookup itself: p95 4.95 s → 15 ms (323x); it was 93% of all query time in the baseline run</li><li>Mixed scenario (inserts + reads + archive job) at 4 clients: 88 → 358 tps (4.1x)</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>The single biggest win measured anywhere in this work</li><li>Makes reads scale with clients again; without it throughput is flat at ~30 tps no matter the load</li><li>Speeds up every other read too, because the full scans no longer flush the cache</li><li>No code change, and reversible with one DROP INDEX</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>283 MB of disk on a 5M-row table</li><li>Random UUID keys mean every insert writes to a random index page: measurable (1.7-3.4x) on a single-statement bulk insert of 10,000 rows, but <b>not</b> measurable in the load test (one row per transaction, +10% to -1% across all client counts)</li><li>CREATE INDEX without CONCURRENTLY would block writes for the ~6 s build</li></ul></div></div></article><article class="item" id="archive-corrid"><div class="item-head"><h3>Index metricarchive.correlationid, as a hash index</h3><span class="pill p2">Worth doing</span><span class="pill c-measured">measured here</span></div><p class="what"><code>CREATE INDEX CONCURRENTLY metricarchive_correlationid ON metricarchive USING hash (correlationid);</code></p><p class="tool-line">Find it with: <span class="tool">diagnose (missing-index), explain (seq-scan)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 20: tracing one request across both tables 0.88 s → 0.04 ms once both tables are indexed; with only metric indexed the archive scan still costs ~0.75 s</li><li>Hash index 512 MB vs B-tree 853 MB on 15M rows, same lookup speed</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Support can trace an old request in milliseconds instead of a second per attempt</li><li>Hash is 40% smaller than B-tree because it stores a 4-byte hash, not the 36-character UUID</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>512 MB of disk</li><li>Hash supports equality only: no ranges, no ORDER BY, no prefix search, no unique constraint</li><li>Only worth it if old requests are actually traced; the archive is otherwise written and read by date</li></ul></div></div></article><article class="item" id="metricid"><div class="item-head"><h3>Index metricarchive.metricid (upstream fix)</h3><span class="pill p1">Do first</span><span class="pill c-measured">measured here</span></div><p class="what">Add <code>Index(metricId)</code> to <code>MetricArchive.dbIndexes</code>. Submitted as <a href="https://github.com/OpenBankProject/OBP-API/pull/2918">OBP-API PR #2918</a>; Schemifier creates it at boot on existing deployments.</p><p class="tool-line">Find it with: <span class="tool">diagnose (seq-scan on metricarchive), then the OBP source</span></p><div class="evidence"><h4>Evidence</h4><ul><li>The archive job looks each row up by metricId twice (dedup in saveMetricsArchive, verify before delete) and no index existed: two full scans of metricarchive per archived row</li><li>Showcase demo 10 at 15M archive rows: ~1.57 s per row without the index, ~0.8 ms with it</li><li>Matches the real database: 1,542 scans of metricarchive for the 766-row run on 2026-08-19</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Without it, archiving cost grows with the archive: a 10,000-row batch would need hours at 15M rows, against a 10-minute scheduler interval, so the job falls permanently behind</li><li>One line, no behaviour change, no migration needed</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Index build blocks writes to metricarchive at boot (seconds per few million rows); only the archive job writes there</li><li>Disk cost grows with the archive, a few hundred MB at 15M rows</li></ul></div></div></article><article class="item" id="dup-indexes"><div class="item-head"><h3>Drop the duplicate consent_reference_id indexes</h3><span class="pill p2">Worth doing</span><span class="pill c-measured">measured here</span></div><p class="what">Both tables carry two identical indexes on <code>consent_reference_id</code>: one from <code>dbIndexes</code>, one created explicitly by <code>MigrationOfMetricConsentReferenceId</code>. Drop one of each and remove the duplicate from the migration.</p><p class="tool-line">Find it with: <span class="tool">diagnose (duplicate-index)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Sizes on the test data: 33 MB (metric) + 100 MB (metricarchive) wasted per duplicate</li><li>Every insert and every archived row maintains both copies for no benefit</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Frees 133 MB and removes pure write overhead</li><li>No query loses anything: the surviving index is identical</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Needs care upstream so the migration does not recreate it on the next deploy</li><li>The write saving was not isolated in a benchmark; index maintenance per row is small</li></ul></div></div></article></section><section class="panel" id="g-code" style="margin-top:28px"><h2>Application and job changes</h2><p class="sub">Need a code change in OBP; larger wins than any setting.</p><article class="item" id="archive-batch"><div class="item-head"><h3>Archive in batches instead of row by row</h3><span class="pill p1">Do first</span><span class="pill c-measured">measured here</span></div><p class="what">Replace the per-row copy/verify/delete loop in <code>MetricsArchiveScheduler</code> with one <code>DELETE ... RETURNING</code> feeding an <code>INSERT</code>, in batches.</p><p class="tool-line">Find it with: <span class="tool">observe during an archive run, then the OBP source</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 10: moving 10,000 rows took 1.49 s row by row (20,000 statements) against 213 ms as one DELETE ... RETURNING feeding an INSERT: about 7x</li><li>With OBP's per-row metricid lookups on top, the same work costs 1.57 s per row at 15M archive rows until the metricid index exists</li><li>Load test, mixed scenario: the batched job moved ~324k rows in 5 minutes while foreground traffic kept running</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>About 7x less time for the same work, and the cost stops depending on archive size</li><li>Fewer round trips and less lock churn than 2 statements per row</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>A real code change in the scheduler, with its own tests</li><li>A batch holds its rows in one transaction: batch size needs a sane limit (1,000-5,000)</li><li>The per-row verify step disappears; the copy is then trusted inside one transaction, which is what makes it atomic anyway</li><li>Adding the metricid index (above) already removes most of the pain, so this is the second step</li></ul></div></div></article><article class="item" id="keyset"><div class="item-head"><h3>Keyset pagination for /management/metrics</h3><span class="pill p2">Worth doing</span><span class="pill c-measured">measured here</span></div><p class="what">Replace <code>LIMIT ... OFFSET n</code> with a seek condition on the last row seen: <code>WHERE (date_c, id) &lt; (:last_date, :last_id) ORDER BY date_c DESC, id DESC LIMIT 20</code>.</p><p class="tool-line">Find it with: <span class="tool">explain (top-n-sort)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 09: page 1 0.03 ms, page 1,000 3.1 ms, page 50,000 241 ms with OFFSET; keyset stays at 0.04 ms at any depth</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Deep pages stop being slow; cost no longer grows with page number</li><li>Less load on the database from bots and scripts that walk the whole metrics list</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>API change: the client must pass the last seen values instead of an offset, so it cannot jump to page N directly</li><li>Only pays off for deep paging; the first few pages are already fast</li></ul></div></div></article><article class="item" id="projections"><div class="item-head"><h3>Stop selecting every column in hot paths</h3><span class="pill p2">Worth doing</span><span class="pill c-measured">measured here</span></div><p class="what">List the columns each screen needs, or use ORM projections, instead of loading the full entity.</p><p class="tool-line">Find it with: <span class="tool">diagnose (toast), explain (filter-waste)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 02: with only indexed columns the query becomes an Index Only Scan, 33 ms → 1.5 ms (22x), reading 89 pages instead of 15,366</li><li>Same demo: after a migration adds a ~2 kB JSON column, the unchanged SELECT * goes from 30 ms to 144 ms while the explicit-column query does not move</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Immune to later schema growth, which is the part no test catches</li><li>Enables index-only scans, which nothing else can</li><li>Less data over the network per request</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Touches many call sites, and ORM projections are more code than loading an entity</li><li>The gain on narrow rows is small today; it grows when wide columns are added later</li></ul></div></div></article><article class="item" id="mv"><div class="item-head"><h3>Pre-compute the dashboard aggregates</h3><span class="pill p3">Later / if needed</span><span class="pill c-measured">measured here</span></div><p class="what">A daily materialized view over metric (day, function, version, consumer: calls, total duration, errors), refreshed every few minutes with <code>REFRESH MATERIALIZED VIEW CONCURRENTLY</code>.</p><p class="tool-line">Find it with: <span class="tool">explain (slow), loadtest run + compare</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 11: 365-day top-APIs 663 ms → 30 ms (22x), 7-day 26x; the view is 11 MB against 1.4 GB of table; a full refresh takes 2.9 s (4.0 s concurrently)</li><li>Load test: after the correlationid fix, the top-APIs aggregate is the heaviest statement left</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Turns the slowest remaining dashboard queries into millisecond lookups</li><li>Cheap to keep current, and CONCURRENTLY does not block readers</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Data is as stale as the refresh interval; not suitable for live per-request views</li><li>Another object to maintain, and the aggregate shape has to match what the API offers</li><li>Refresh costs CPU and temp files (work_mem matters here)</li></ul></div></div></article></section><section class="panel" id="g-settings" style="margin-top:28px"><h2>Server settings</h2><p class="sub">One restart or reload; affects every database on the instance.</p><article class="item" id="shared-buffers"><div class="item-head"><h3>Raise shared_buffers from the 128 MB default</h3><span class="pill p2">Worth doing</span><span class="pill c-estimated">estimated, not measured</span></div><p class="what"><code>ALTER SYSTEM SET shared_buffers = '4GB';</code> then restart. Common starting point is 25% of RAM.</p><p class="tool-line">Find it with: <span class="tool">diagnose (shared-buffers, cache-hit)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 12: shared_buffers holds 2% of the 6.4 GB of data; the same query costs 28 ms cold and 9.5 ms once cached, and a large query evicts everything else</li><li>Load test baseline read run: 159M blocks read from the OS in 5 minutes</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>More of the working set stays in PostgreSQL's own cache, so fewer system calls</li><li>Helps every query, no code change</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li><b>Not measured here.</b> On this machine the OS page cache already absorbs most reads (average read 1.4 µs), so the gain may be smaller than expected</li><li>Needs a restart, and the memory is reserved whether used or not</li><li>Too large a value can hurt: double buffering with the OS cache, and longer checkpoints</li></ul></div></div></article><article class="item" id="work-mem"><div class="item-head"><h3>Raise work_mem for the aggregate and refresh paths</h3><span class="pill p3">Later / if needed</span><span class="pill c-measured">measured here</span></div><p class="what">Default is 4 MB. Set it per session or per role for reporting queries, e.g. <code>SET work_mem = '64MB';</code> before the materialized view refresh.</p><p class="tool-line">Find it with: <span class="tool">diagnose (temp-files), explain (sort-spill)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase run: 7 GB of temp files, mostly the materialized view build and refresh sorting 5M rows</li><li>Two measured cases spilled to disk: SELECT * with a sort (~3 MB per run) and a UNION de-duplication</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Sorts and hashes stay in memory instead of spilling to disk</li><li>Can be set narrowly, for one role or one session, instead of globally</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Multiplied per sort node and per connection: a global increase can exhaust RAM under load</li><li>Only helps queries that actually spill; the everyday metric queries here do not</li></ul></div></div></article><article class="item" id="parallel"><div class="item-head"><h3>Allow more parallel workers per query</h3><span class="pill p3">Later / if needed</span><span class="pill c-measured">measured here</span></div><p class="what"><code>max_parallel_workers_per_gather</code> is 2. Setting it to 4 helps large aggregates.</p><p class="tool-line">Find it with: <span class="tool">not covered by a check: measured by hand in the showcase</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 14, aggregating 15M archive rows: 3.83 s with 1 worker, 1.99 s with 2, 1.88 s with 4, 1.61 s with 6</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Faster reports and archive-wide aggregates</li><li>Reload only, no restart</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Diminishing returns past 4 workers: the scan becomes I/O bound, not CPU bound</li><li>Each parallel query occupies several worker slots, so many concurrent reports can starve each other</li><li>The load test's queries are mostly small; this helps reporting, not the API path</li></ul></div></div></article><article class="item" id="random-page-cost"><div class="item-head"><h3>Lower random_page_cost for SSD storage</h3><span class="pill p3">Later / if needed</span><span class="pill c-estimated">estimated, not measured</span></div><p class="what"><code>random_page_cost</code> is 4, a spinning-disk default. On NVMe, 1.1 is the usual choice.</p><p class="tool-line">Find it with: <span class="tool">loadtest run + compare, one setting at a time</span></p><div class="evidence"><h4>Evidence</h4><ul><li>The storage here is an NVMe SSD; measured average read time per page is 1.4 µs</li><li>Several demos show the planner switching to sequential scans where an index scan was available</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>The planner stops over-estimating the cost of index scans, which suits this workload</li><li>Reload only, and easy to revert</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li><b>Not measured here.</b> No before/after run was done with this setting</li><li>Affects every query on the instance: some plans will change, not all for the better</li><li>Should be tested with the load test before being applied anywhere real</li></ul></div></div></article><article class="item" id="autovacuum"><div class="item-head"><h3>Tune autovacuum for the metric table</h3><span class="pill p2">Worth doing</span><span class="pill c-measured">measured here</span></div><p class="what">Lower <code>autovacuum_vacuum_scale_factor</code> for this table, e.g. <code>ALTER TABLE metric SET (autovacuum_vacuum_scale_factor = 0.02);</code></p><p class="tool-line">Find it with: <span class="tool">diagnose (dead-rows)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Load test, mixed scenario at 16 clients: 298,000 dead rows in metric after 5 minutes, autovacuum never ran during the run</li><li>Default scale factor 0.2 means a 5M-row table waits for 1M dead rows before a vacuum</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Keeps the table from bloating between archive runs, which delete in bulk</li><li>Keeps statistics fresher, which matters after big deletes (see showcase demo 01)</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>More frequent vacuums cost I/O while running</li><li>The archive job's bulk deletes will still create bursts of dead rows</li></ul></div></div></article></section><section class="panel" id="g-situational" style="margin-top:28px"><h2>Situational</h2><p class="sub">Only worth it if the matching feature or query pattern actually exists.</p><article class="item" id="covering"><div class="item-head"><h3>Covering index for the top-APIs query</h3><span class="pill p3">Later / if needed</span><span class="pill c-measured">measured here</span></div><p class="what"><code>CREATE INDEX ... ON metric (date_c) INCLUDE (implementedbypartialfunction, implementedinversion, duration);</code></p><p class="tool-line">Find it with: <span class="tool">explain (filter-waste)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 07: 50-116 ms → 36-41 ms (1.3-3x), answered from the index alone</li><li>Cost: 299 MB against 108 MB for the plain date index; 10,000 inserts ~20% slower</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Turns a dashboard query into an index-only scan</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Three times the size of the plain date index, on the table that receives every insert</li><li>The materialized view (above) solves the same query far better; pick one, not both</li></ul></div></div></article><article class="item" id="partial"><div class="item-head"><h3>Partial index for error dashboards</h3><span class="pill p3">Later / if needed</span><span class="pill c-measured">measured here</span></div><p class="what"><code>CREATE INDEX ... ON metric (date_c) WHERE httpcode &gt;= 400;</code></p><p class="tool-line">Find it with: <span class="tool">diagnose (missing-index), explain</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 08: 8.9 MB against 151 MB for the full (httpcode, date_c) index, and at least as fast (9-12 ms vs 15-16 ms; 29-87 ms with no index)</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>17x smaller than the full index, so it stays cached</li><li>Costs nothing when rows outside the predicate are written</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Only used by queries whose WHERE matches the predicate</li><li>Worth it only if an error view is actually queried regularly</li></ul></div></div></article><article class="item" id="trigram"><div class="item-head"><h3>Trigram index for URL substring search</h3><span class="pill p4">Only on demand</span><span class="pill c-measured">measured here</span></div><p class="what"><code>CREATE INDEX ... ON metric USING gin (url gin_trgm_ops);</code></p><p class="tool-line">Find it with: <span class="tool">explain (seq-scan on a LIKE filter)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 18: LIKE '%dynamic-entity%' 379 ms → 8.9 ms (42x), and ILIKE uses it too</li><li>Cost: 184 MB (18% of the table), 28 s to build</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Makes a search box over URLs usable</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Large index and slower writes, for a feature that may not exist</li><li>Only add it if users really search URLs by substring</li></ul></div></div></article><article class="item" id="brin"><div class="item-head"><h3>BRIN instead of B-tree on metricarchive.date_c</h3><span class="pill p4">Only on demand</span><span class="pill c-measured">measured here</span></div><p class="what"><code>CREATE INDEX ... ON metricarchive USING brin (date_c);</code> and drop the B-tree.</p><p class="tool-line">Find it with: <span class="tool">not covered by a check: an index-size trade-off, measured by hand</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 17: 136 kB against 326 MB (2,400x smaller); one day 762 ms → 14 ms without any index, but the B-tree is still faster: 3.4-4.6 ms vs 14-18 ms for a day, 40-46 ms vs 265-498 ms for a month</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Almost free in disk terms, and good enough for an archive that is rarely queried</li><li>Works because the archive is append-only and ordered by date</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>3-10x slower than the B-tree for the same query</li><li>Only sensible if archive queries are rare and index size matters</li></ul></div></div></article><article class="item" id="partitioning"><div class="item-head"><h3>Partition metricarchive by month</h3><span class="pill p3">Later / if needed</span><span class="pill c-estimated">estimated, not measured</span></div><p class="what">Range partitioning on <code>date_c</code>, so expiring old data becomes DROP PARTITION.</p><p class="tool-line">Find it with: <span class="tool">not covered by a check: a design change, measure with loadtest</span></p><div class="evidence"><h4>Evidence</h4><ul><li>The archive job currently deletes expired rows with a bulk DELETE, which rewrites index entries and leaves dead rows behind</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Expiry becomes instant and creates no bloat</li><li>Queries for one month touch one partition</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li><b>Not measured here.</b> No partitioned variant was benchmarked</li><li>A real migration of a 15M-row table, plus application and job changes</li><li>Every index becomes per-partition; queries without a date filter get slower</li></ul></div></div></article></section><section class="panel" id="g-rejected" style="margin-top:28px"><h2>Tried and not recommended</h2><p class="sub">Common advice that did not hold up on this data.</p><article class="item" id="or-union"><div class="item-head"><h3>Rewriting OR as UNION</h3><span class="pill p0">Skip</span><span class="pill c-measured">measured here</span></div><p class="what">Common advice says OR across columns prevents index use and should be rewritten as UNION.</p><p class="tool-line">Find it with: <span class="tool">showcase demo 05 (myth check)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 05: OR across two indexed columns is answered with a BitmapOr of both indexes, 158 ms against 194 ms for the UNION rewrite</li><li>UNION only wins for 'newest N' queries where each side reads its own index in order, and there both finish in about 1 ms</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>None worth the rewrite on PostgreSQL</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>More SQL to maintain for no measured gain</li><li>The real fix for a slow OR is an index on the column that lacks one</li></ul></div></div></article><article class="item" id="hints"><div class="item-head"><h3>Forcing plans (hints, enable_* switches)</h3><span class="pill p0">Skip</span><span class="pill c-measured">measured here</span></div><p class="what">MySQL-style optimizer hints have no PostgreSQL equivalent; enable_seqscan and friends exist only as session switches.</p><p class="tool-line">Find it with: <span class="tool">showcase demo 15 (myth check)</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 15: the planner's own choice (0.7-5.6 ms) beat every alternative it had rejected (bitmap + sort 19-32 ms, full scan 190-242 ms)</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>Useful as a debugging tool to see which plan was rejected</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>Not a production fix: a forced plan stops adapting when the data changes</li><li>When the planner is wrong, the cause is usually stale statistics or a missing index</li></ul></div></div></article><article class="item" id="explain-only"><div class="item-head"><h3>Trusting EXPLAIN ANALYZE alone</h3><span class="pill p0">Skip</span><span class="pill c-measured">measured here</span></div><p class="what">Not a change to make, a habit to drop: EXPLAIN ANALYZE does not send rows to a client.</p><p class="tool-line">Find it with: <span class="tool">explain and pg_stat_statements both see what EXPLAIN hides</span></p><div class="evidence"><h4>Evidence</h4><ul><li>Showcase demo 02: after a wide column is added, EXPLAIN reports 7.8 → 10.2 ms while the client sees 10.5 → 123 ms, because large values live out of line and EXPLAIN never fetches them</li><li>pg_stat_statements did show it: 111 ms against EXPLAIN's 19 ms</li></ul></div><div class="pc"><div class="pros"><h4>Pros</h4><ul><li>EXPLAIN stays the right tool for plan shape, row estimates and buffers</li></ul></div><div class="cons"><h4>Cons and trade-offs</h4><ul><li>It hides everything that happens while delivering rows</li><li>Use client-side timings or pg_stat_statements for the real cost; PostgreSQL 17 adds EXPLAIN (ANALYZE, SERIALIZE) for this</li></ul></div></div></article></section>
+    <section class="panel" style="margin-top:28px"><h2>Where the evidence comes from</h2>
+      <dl class="kv">
+        <dt>showcase/</dt><dd>21 query-pattern demos (execution plans, indexing, pagination, batching, caching) on
+          5M + 15M rows; each claim confirmed or corrected with measurements.</dd>
+        <dt>loadtest/</dt><dd>pgbench: read, write and mixed scenarios at 1, 4, 8 and 16 clients, 5 minutes each,
+          run twice: baseline and with the correlationid index.</dd>
+        <dt><a href="https://github.com/constantine2nd/postgresql-lab">pglab</a></dt><dd>The tools these findings were made with, now generic and in their own repository: <code>observe</code>
+          (which statements one action runs), <code>diagnose</code> (structural problems, read-only),
+          <code>capture</code> (the real workload), <code>clone</code> (a pseudonymized, scaled copy),
+          <code>seed</code> (rows for a table that has none yet) and <code>explain</code> (what is wrong with
+          each plan). The "How to find it" column above names the check that surfaces each item.</dd>
+        <dt>OBP-API source</dt><dd>MetricsArchiveScheduler, MappedMetrics and the metric migrations, read to confirm
+          what the code does per archived row.</dd>
+        <dt>Machine</dt><dd>Laptop, Core i7-11390H (4 cores / 8 threads), 16 GB RAM, NVMe SSD, PostgreSQL 14 with
+          default memory settings. A server with more RAM would show smaller cache effects and larger parallel gains.</dd>
+      </dl>
+    </section>
+    <section class="panel" style="margin-top:28px"><h2>Repeating this on any table</h2>
+      <p class="sub">The same path that produced this list, as commands. Steps 1-3 are read-only and safe
+        against a live database; the rest only touch a copy.</p>
+      <pre>git clone https://github.com/constantine2nd/postgresql-lab &amp;&amp; cd postgresql-lab/pglab
+./observe.py  -d proddb --role appuser          # 1. trigger the slow action: what ran, which tables
+./diagnose.py -d proddb -t &lt;table&gt;              # 2. duplicate, unused and missing indexes, bloat, cache
+./capture.py  -d proddb -t &lt;table&gt; -o wl/       # 3. the statements that really run, with their weights
+./clone.py --from proddb -t &lt;table&gt; --to lab --anonymize --scale-to 5000000
+psql -d lab -f wl/prepare.sql
+./explain.py -w wl/ -d lab                      # 4. what is wrong with each plan, and what to try
+./replay.py baseline --workload wl/ --db lab
+./replay.py fixed    --workload wl/ --db lab --apply fix.sql
+./compare.py baseline fixed --scripts          # 5. did it help, and what did it cost</pre>
+      <p class="sub" style="margin-top:10px">For a table that does not exist yet:
+        <code>seed.py --rows 1000000 --values col=N</code> fills it from the column types, then
+        <code>explain.py --sql expected_queries.sql</code> shows the plans at that size.</p>
+    </section>
+    <footer>Every number here came from a run on the generated copy, never from production. Regenerate this page with
+      <code>./improvements.py</code> in the repository root.</footer>
+  </main>
+</div>

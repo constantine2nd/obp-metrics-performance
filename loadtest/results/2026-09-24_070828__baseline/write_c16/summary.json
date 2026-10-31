@@ -1,0 +1,19 @@
+{
+  "scenario": "write",
+  "clients": 16,
+  "tps": 4515.456649,
+  "transactions": 1354667,
+  "latency_avg_ms": 3.542,
+  "p50_ms": 3.33,
+  "p95_ms": 4.3,
+  "p99_ms": 7.21,
+  "scripts": {
+    "w_insert.sql": {
+      "tps": 4515.456649,
+      "p50_ms": 3.33,
+      "p95_ms": 4.3,
+      "p99_ms": 7.21,
+      "samples": 134902
+    }
+  }
+}

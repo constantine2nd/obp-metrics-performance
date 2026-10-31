@@ -1,0 +1,29 @@
+{
+ "file": "19_query_store.sql",
+ "title": "Query Store (SQL Server) = pg_stat_statements + pgstat",
+ "category": "Monitoring (Query Store equivalent)",
+ "claim": [
+  "A flight recorder for queries: performance over time, find the worst queries, spot regressions."
+ ],
+ "verdict": [
+  "The equivalent exists in two parts. pg_stat_statements is PostgreSQL's cumulative query store; the top of this",
+  "list is the showcase's own heaviest work (parallel aggregates over the archive, index builds). It keeps no",
+  "history: the pgstat tool (../pgstat) adds 15-minute snapshots, time windows and per-query trends, which covers",
+  "the 'performance over time' and regression parts."
+ ],
+ "compare": null,
+ "sections": [
+  {
+   "kind": "info",
+   "label": "Top statements in obp_showcase by total time (pg_stat_statements, what this showcase ran)",
+   "sql": "SELECT calls, round(total_exec_time::numeric / 1000, 1) AS total_s, round(mean_exec_time::numeric, 1) AS mean_ms,\n       left(regexp_replace(query, '\\s+', ' ', 'g'), 90) AS query\n  FROM pg_stat_statements\n WHERE dbid = (SELECT oid FROM pg_database WHERE datname = current_database())\n ORDER BY total_exec_time DESC LIMIT 10;",
+   "output": "calls | total_s | mean_ms |                                           query                                            \n-------+---------+---------+--------------------------------------------------------------------------------------------\n    14 |    32.5 |  2323.0 | EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT implementedbypartialfunction, count(*), avg\n     1 |    27.8 | 27792.6 | CREATE INDEX sc_metric_url_trgm ON metric USING gin (url gin_trgm_ops)\n    80 |    15.7 |   196.2 | SELECT * FROM metricarchive WHERE metricid = $1\n     8 |     6.5 |   811.8 | EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT count(*), avg(duration) FROM metricarchive \n     1 |     5.8 |  5788.1 | CREATE INDEX sc_archive_lower_email ON metricarchive (lower(developeremail))\n     2 |     5.0 |  2485.6 | CREATE INDEX sc_metric_user_date ON metric (userid, date_c)\n     1 |     4.6 |  4637.3 | CREATE INDEX sc_archive_metricid ON metricarchive (metricid)\n    15 |     4.6 |   303.8 | EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) SELECT count(*), avg(duration) FROM metricarchive \n     1 |     4.4 |  4386.8 | INSERT INTO sc_stale (url, duration, date_c, consumerid, correlationid, httpcode, verb) SE\n     1 |     4.0 |  3985.8 | REFRESH MATERIALIZED VIEW CONCURRENTLY sc_metric_daily\n(10 rows)"
+  },
+  {
+   "kind": "info",
+   "label": "History over time: ../pgstat keeps 15-minute snapshots (pgstat setup, then e.g.)",
+   "sql": "SELECT 'pgstat total 1h -d obp_showcase    -- what took the time in the last hour' AS command\nUNION ALL SELECT 'pgstat trend <queryid> 1w           -- did this query get slower this week?'\nUNION ALL SELECT 'pgstat slow 1d -d obp_mapped        -- slowest statements yesterday';",
+   "output": "command                                   \n-----------------------------------------------------------------------------\n pgstat total 1h -d obp_showcase    -- what took the time in the last hour\n pgstat trend <queryid> 1w           -- did this query get slower this week?\n pgstat slow 1d -d obp_mapped        -- slowest statements yesterday\n(3 rows)"
+  }
+ ]
+}
